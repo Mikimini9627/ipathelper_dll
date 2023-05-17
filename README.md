@@ -1,5 +1,5 @@
 # IpatHelper-SampleApl
-I-PAT投票補助用の自作モジュール(IpatHelper.dll)を使用するシンプルなサンプルです。  
+I-PAT投票補助用の自作モジュール(IpatHelper.dll)を使用するサンプルです。  
 公開APIについては[関数仕様書](/Build/関数仕様書.md)を確認していただければと思います。  
 
 JV-Link関連の実装をしていたところ「投票モジュールを自分用に作っておきたいな」と  
