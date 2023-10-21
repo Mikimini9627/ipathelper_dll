@@ -127,19 +127,9 @@ public class IpatHelper {
 	//定数
 	public class Constant{
 		public static final int DEPOSIT_DEFAULT_VALUE = 1000;
-		public static final int DEFAULT_CONFIRM_TIMEOUT = 10000;
+		public static final int DEFAULT_CONFIRM_TIMEOUT	 = 10000;
 	}
-
-	//戻り値
-	public class ReturnValue{
-		public static final int SUCCESS = 1;
-		public static final int UNSUCCESS = 2;
-		public static final int FAILED_CHUOU  = 4;
-		public static final int FAILED_CHIHOU = 8;
-		public static final int FAILED_COMMUNICATE_CHUOU = 16;
-		public static final int FAILED_COMMUNICATE_CHIHOU  = 32;
-	}
-
+	
 	// 馬券情報(詳細)
 	public static class ST_TICKET_DATA_DETAIL  extends Structure {
 		
