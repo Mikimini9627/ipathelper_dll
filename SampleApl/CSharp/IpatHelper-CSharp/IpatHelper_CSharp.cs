@@ -163,7 +163,8 @@ namespace IpatHelper_DotNetTestApl
             UNSUCCESS = 2,
             FAILED_CHUOU = 4,
             FAILED_CHIHOU = 8,
-            FAILED_COMMUNICATE = 16
+            FAILED_COMMUNICATE_CHUOU = 16,
+            FAILED_COMMUNICATE_CHIHOU = 32,
         }
 
         public enum WEEK_DAY

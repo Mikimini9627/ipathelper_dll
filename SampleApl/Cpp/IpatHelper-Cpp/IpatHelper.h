@@ -1,13 +1,13 @@
 #ifndef _IPAT_HELPER_H
 #define _IPAT_HELPER_H
 
-#define DEPOSIT_DEFAULT_VALUE	1000	// 自動入金のデフォルト値(ms)
-#define DEFAULT_CONFIRM_TIMEOUT	10000	// 自動入金時のデフォルトタイムアウト(ms)
-#define DEFAULT_BET_TIMEOUT		500		// 馬券購入間隔のデフォルト値
+constexpr auto DEPOSIT_DEFAULT_VALUE		= 1000;	// 自動入金のデフォルト値(ms)
+constexpr auto DEFAULT_CONFIRM_TIMEOUT		= 10000;// 自動入金時のデフォルトタイムアウト(ms)
+constexpr auto DEFAULT_BET_TIMEOUT			= 500;	// 馬券購入間隔のデフォルト値
 
-#define WIN5_RACE_COUNT				5	// WIN5のレース数
-#define UMABAN_COLUMN_COUNT			3	// フォーメーションでの列数
-#define UMABAN_TICKET_COLUMN_COUNT	5	// フォーメーションでの列数(WIN5も含める)
+constexpr auto WIN5_RACE_COUNT				= 5;	// WIN5のレース数
+constexpr auto UMABAN_COLUMN_COUNT			= 3;	// フォーメーションでの列数
+constexpr auto UMABAN_TICKET_COLUMN_COUNT	= 5;	// フォーメーションでの列数(WIN5も含める)
 
 #ifdef	__cplusplus
 extern	"C" {
@@ -83,7 +83,7 @@ extern	"C" {
 		NORMAL,
 
 		/// <summary>
-		/// WIN%
+		/// WIN5
 		/// </summary>
 		WIN5,
 
@@ -353,9 +353,14 @@ extern	"C" {
 		FAILED_CHIHOU = 0b00001000,
 
 		/// <summary>
-		/// 通信に失敗(IPATレスポンスエラー)
+		/// 中央競馬での通信に失敗(IPATレスポンスエラー)
 		/// </summary>
-		FAILED_COMMUNICATE = 0b00010000
+		FAILED_COMMUNICATE_CHUOU = 0b00010000,
+
+		/// <summary>
+		/// 地方競馬での通信に失敗(IPATレスポンスエラー)
+		/// </summary>
+		FAILED_COMMUNICATE_CHIHOU = 0b00100000
 	};
 
 	/// <summary>
