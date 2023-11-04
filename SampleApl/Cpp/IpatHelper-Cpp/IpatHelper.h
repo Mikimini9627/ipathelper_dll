@@ -224,14 +224,14 @@ extern	"C" {
 		LONGCHAMP,
 
 		/// <summary>
-		/// メイダン
-		/// </summary>
-		MEYDAN,
-
-		/// <summary>
 		/// シャティン
 		/// </summary>
 		SHATIN,
+
+		/// <summary>
+		/// サンタアニタ
+		/// </summary>
+		SANTAANITA,
 
 		/// <summary>
 		/// ドーヴィル

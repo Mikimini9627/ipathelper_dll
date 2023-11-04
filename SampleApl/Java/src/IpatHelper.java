@@ -60,8 +60,8 @@ public class IpatHelper {
 		public static final int KAISAI_SAGA = 23;
 		
 		public static final int KAISAI_LONGCHAMP = 24;
-		public static final int KAISAI_MEYDAN = 25;
-		public static final int KAISAI_SHATIN = 26;
+		public static final int KAISAI_SHATIN = 25;
+		public static final int KAISAI_SANTAANITA = 26;
 		public static final int KAISAI_DEAUVILE = 27;
 		public static final int KAISAI_CHURCHILLDOWNS = 28;
 	}

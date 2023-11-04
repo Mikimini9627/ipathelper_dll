@@ -126,8 +126,8 @@ namespace IpatHelper_DotNetTestApl
             KOCHI,
             SAGA,
             LONGCHAMP,
-            MEYDAN,
             SHATIN,
+            SANTAANITA,
             DEAUVILE,
             CHURCHILLDOWNS
         }
