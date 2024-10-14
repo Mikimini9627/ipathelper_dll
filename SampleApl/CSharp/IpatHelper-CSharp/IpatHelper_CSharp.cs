@@ -129,7 +129,8 @@ namespace IpatHelper_DotNetTestApl
             SHATIN,
             SANTAANITA,
             DEAUVILE,
-            CHURCHILLDOWNS
+            CHURCHILLDOWNS,
+            ABDULAZIZ
         }
 
         public enum Houshiki

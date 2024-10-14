@@ -64,6 +64,7 @@ public class IpatHelper {
 		public static final int KAISAI_SANTAANITA = 26;
 		public static final int KAISAI_DEAUVILE = 27;
 		public static final int KAISAI_CHURCHILLDOWNS = 28;
+		public static final int KAISAI_ABDULAZIZ = 29;
 	}
 
 	//方式
