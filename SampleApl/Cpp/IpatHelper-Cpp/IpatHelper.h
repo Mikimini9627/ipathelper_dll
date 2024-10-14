@@ -241,7 +241,12 @@ extern	"C" {
 		/// <summary>
 		/// チャーチルダウンズ
 		/// </summary>
-		CHURCHILLDOWNS
+		CHURCHILLDOWNS,
+
+		/// <summary>
+		/// キングアブドゥルアジーズ
+		/// </summary>
+		ABDULAZIZ
 	};
 
 	/// <summary>
