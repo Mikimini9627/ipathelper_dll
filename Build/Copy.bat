@@ -1,32 +1,32 @@
 @echo off
 
-REM ÉzÅ[ÉÄÉfÉBÉåÉNÉgÉäÇéwíËÇ∑ÇÈ
+REM ÔøΩzÔøΩ[ÔøΩÔøΩÔøΩfÔøΩBÔøΩÔøΩÔøΩNÔøΩgÔøΩÔøΩÔøΩÔøΩÔøΩwÔøΩËÇ∑ÔøΩÔøΩ
 set HOME_DIR_PATH=%~dp0..\
 
 REM C++
-copy "%HOME_DIR_PATH%Build\x64\IpatHelper.dll" "%HOME_DIR_PATH%SampleApl\Cpp\IpatHelper-Cpp\x64"
-copy "%HOME_DIR_PATH%Build\x64\IpatHelper.lib" "%HOME_DIR_PATH%SampleApl\Cpp\IpatHelper-Cpp\x64"
-copy "%HOME_DIR_PATH%Build\x86\IpatHelper.dll" "%HOME_DIR_PATH%SampleApl\Cpp\IpatHelper-Cpp\x86"
-copy "%HOME_DIR_PATH%Build\x86\IpatHelper.lib" "%HOME_DIR_PATH%SampleApl\Cpp\IpatHelper-Cpp\x86"
+copy "%HOME_DIR_PATH%build\x64\IpatHelper.dll" "%HOME_DIR_PATH%sample_app\cpp\IpatHelper-Cpp\x64"
+copy "%HOME_DIR_PATH%build\x64\IpatHelper.lib" "%HOME_DIR_PATH%sample_app\cpp\IpatHelper-Cpp\x64"
+copy "%HOME_DIR_PATH%build\x86\IpatHelper.dll" "%HOME_DIR_PATH%sample_app\cpp\IpatHelper-Cpp\x86"
+copy "%HOME_DIR_PATH%build\x86\IpatHelper.lib" "%HOME_DIR_PATH%sample_app\cpp\IpatHelper-Cpp\x86"
 
 REM C#
-copy "%HOME_DIR_PATH%Build\x64\IpatHelper.dll" "%HOME_DIR_PATH%SampleApl\CSharp\IpatHelper-CSharp\x64"
-copy "%HOME_DIR_PATH%Build\x86\IpatHelper.dll" "%HOME_DIR_PATH%SampleApl\CSharp\IpatHelper-CSharp\x86"
+copy "%HOME_DIR_PATH%build\x64\IpatHelper.dll" "%HOME_DIR_PATH%sample_app\csharp\IpatHelper-CSharp\x64"
+copy "%HOME_DIR_PATH%build\x86\IpatHelper.dll" "%HOME_DIR_PATH%sample_app\csharp\IpatHelper-CSharp\x86"
 
 REM Java
-copy "%HOME_DIR_PATH%Build\x64\IpatHelper.dll" "%HOME_DIR_PATH%SampleApl\Java\library\x64"
-copy "%HOME_DIR_PATH%Build\x86\IpatHelper.dll" "%HOME_DIR_PATH%SampleApl\Java\library\x86"
+copy "%HOME_DIR_PATH%build\x64\IpatHelper.dll" "%HOME_DIR_PATH%sample_app\java\library\x64"
+copy "%HOME_DIR_PATH%build\x86\IpatHelper.dll" "%HOME_DIR_PATH%sample_app\java\library\x86"
 
 REM Python
-copy "%HOME_DIR_PATH%Build\x64\IpatHelper.dll" "%HOME_DIR_PATH%SampleApl\Python\x64"
-copy "%HOME_DIR_PATH%Build\x86\IpatHelper.dll" "%HOME_DIR_PATH%SampleApl\Python\x86"
+copy "%HOME_DIR_PATH%build\x64\IpatHelper.dll" "%HOME_DIR_PATH%sample_app\python\x64"
+copy "%HOME_DIR_PATH%build\x86\IpatHelper.dll" "%HOME_DIR_PATH%sample_app\python\x86"
 
 REM Julia
-copy "%HOME_DIR_PATH%Build\x64\IpatHelper.dll" "%HOME_DIR_PATH%SampleApl\Julia\x64"
-copy "%HOME_DIR_PATH%Build\x86\IpatHelper.dll" "%HOME_DIR_PATH%SampleApl\Julia\x86"
+copy "%HOME_DIR_PATH%build\x64\IpatHelper.dll" "%HOME_DIR_PATH%sample_app\julia\x64"
+copy "%HOME_DIR_PATH%build\x86\IpatHelper.dll" "%HOME_DIR_PATH%sample_app\julia\x86"
 
 REM TestApp
-copy "%HOME_DIR_PATH%Build\x64\IpatHelper.dll" "%HOME_DIR_PATH%TestApp\x64"
-copy "%HOME_DIR_PATH%Build\x86\IpatHelper.dll" "%HOME_DIR_PATH%TestApp\x86"
+copy "%HOME_DIR_PATH%build\x64\IpatHelper.dll" "%HOME_DIR_PATH%dll_test_app\x64"
+copy "%HOME_DIR_PATH%build\x86\IpatHelper.dll" "%HOME_DIR_PATH%dll_test_app\x86"
 
 

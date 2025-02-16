@@ -1,4 +1,7 @@
-# IpatHelper-SampleApl
+# IpatHelper
+
+「IpatHelper.dll」はIPAT投票機能を各種プログラムから実行するためのモジュールです。
+
 I-PAT投票補助用の自作モジュール(IpatHelper.dll)を使用するサンプルです。  
 公開APIについては[関数仕様書](/Build/関数仕様書.md)を確認していただければと思います。  
 
