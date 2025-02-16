@@ -31,6 +31,7 @@ JV-Link関連の実装をしていたところ「投票モジュールを自分�
 ### その他
   - IpatHelper.dll自体のソースコードは公開していません。  
   - 当サンプルアプリおよびIpatHelper.dllの利用によって生じた損害については一切責任を負いません。  
+  - Pythonについては[PyPi](https://pypi.org/project/ipathelper/)でも公開しています。  
 
 ### 対応競馬場
   - 日本国内の競馬場すべて  

@@ -126,7 +126,7 @@ class ST_BET_DATA(Structure):
 class ST_BET_DATA_WIN5(Structure):
     _fields_ = [("Kingaku", c_uint), ("Youbi", c_byte), ("Umaban", c_uint * 5)]
 
-def InitializeModule():
+def init():
     '''
         モジュールのイニシャライズ
     '''
@@ -183,7 +183,7 @@ def InitializeModule():
     if maxsize > 2 ** 32:
         windll.kernel32.FreeLibrary.argtypes = [wintypes.HMODULE]
 
-def UninitializeModule():
+def uninit():
     '''
         モジュールのファイナライズ
     '''
@@ -195,7 +195,7 @@ def UninitializeModule():
 
     windll.kernel32.FreeLibrary(libraryHandle)
 
-def Login(iNetId : str, id : str, password : str, pars : str):
+def login(iNetId : str, id : str, password : str, pars : str):
     '''
         ログイン処理実行
     '''
@@ -204,7 +204,7 @@ def Login(iNetId : str, id : str, password : str, pars : str):
 
     return lib.Login(iNetId.encode('utf-8'), id.encode('utf-8'), password.encode('utf-8'), pars.encode('utf-8'))
 
-def Logout():
+def logout():
     '''
         ログアウト処理実行
     '''
@@ -213,7 +213,7 @@ def Logout():
 
     return lib.Logout()
 
-def Deposit(depositValue : int):
+def deposit(depositValue : int):
     '''
         入金処理実行
     '''
@@ -222,7 +222,7 @@ def Deposit(depositValue : int):
 
     return lib.Deposit(depositValue)
 
-def Withdraw():
+def withdraw():
     '''
         出金処理実行
     '''
@@ -231,7 +231,7 @@ def Withdraw():
 
     return lib.Withdraw()
 
-def GetPurchaseData(purchaseData : ST_PURCHASE_DATA):
+def get_purchase_data(purchaseData : ST_PURCHASE_DATA):
     '''
         購入状況取得処理実行
     '''
@@ -309,7 +309,7 @@ def GetPurchaseData(purchaseData : ST_PURCHASE_DATA):
 
     return returnValue
 
-def GetBetInstance(kaisai : int, raceNo : int, year : int, month : int, day : int, \
+def get_bet_instance(kaisai : int, raceNo : int, year : int, month : int, day : int, \
                     houshiki : int, shikibetsu : int, kingaku : int, kaime : str, betData : ST_BET_DATA):
     '''
         馬券購入用インスタンス取得処理
@@ -319,7 +319,7 @@ def GetBetInstance(kaisai : int, raceNo : int, year : int, month : int, day : in
 
     return lib.GetBetInstance(kaisai, raceNo, year, month, day, houshiki, shikibetsu, kingaku, kaime.encode('utf-8'), byref(betData))
 
-def GetBetInstanceWin5(kingaku : int, year : int, month : int, day : int, kaime : str, betData : ST_BET_DATA_WIN5):
+def get_bet_instance_win5(kingaku : int, year : int, month : int, day : int, kaime : str, betData : ST_BET_DATA_WIN5):
     '''
         馬券購入用インスタンス取得処理(WIN5)
     '''
@@ -328,7 +328,7 @@ def GetBetInstanceWin5(kingaku : int, year : int, month : int, day : int, kaime 
 
     return lib.GetBetInstanceWin5(kingaku, year, month, day, kaime.encode('utf-8'), byref(betData))
 
-def Bet(betDataList : list, listCount : int, waitMiliSeconds  : int):
+def bet(betDataList : list, listCount : int, waitMiliSeconds  : int):
     '''
         馬券購入処理実行
     '''
@@ -337,7 +337,7 @@ def Bet(betDataList : list, listCount : int, waitMiliSeconds  : int):
     
     return lib.Bet(betDataList, listCount, waitMiliSeconds)
 
-def BetWin5(betData : ST_BET_DATA_WIN5, waitMiliSeconds : int):
+def bet_win5(betData : ST_BET_DATA_WIN5, waitMiliSeconds : int):
     '''
         馬券購入処理実行(WIN5)
     '''
@@ -346,7 +346,7 @@ def BetWin5(betData : ST_BET_DATA_WIN5, waitMiliSeconds : int):
     
     return lib.BetWin5(betData, waitMiliSeconds)
 
-def SetAutoDepositFlag(enable : bool, depositValue : int, confirmTimeout : int):
+def set_auto_deposit_flag(enable : bool, depositValue : int, confirmTimeout : int):
     '''
         自動入金機能フラグ設定
     '''
