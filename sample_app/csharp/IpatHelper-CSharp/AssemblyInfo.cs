@@ -15,7 +15,7 @@ using System.Reflection;
 #endif
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Mikimini")]
-[assembly: AssemblyCopyright("Copyright © HP Inc. 2023 Mikimini9627")]
+[assembly: AssemblyCopyright("Copyright © HP Inc. 2026 Mikimini9627")]
 [assembly: AssemblyInformationalVersion("2.0.0.0")]
 [assembly: AssemblyFileVersion("2.0.0.0")]
 

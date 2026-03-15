@@ -20,7 +20,8 @@ public class IpatHelper {
 		public int Deposit(int depositValue);
 		public int Withdraw();
 		public int GetPurchaseData(ST_PURCHASE_DATA_INTERNAL purchaseData);
-		public void ReleasePurchaseData(ST_PURCHASE_DATA_INTERNAL purchaseData);
+		// 変更: 値渡し → ポインタ渡し（ByReference）
+		public void ReleasePurchaseData(ST_PURCHASE_DATA_INTERNAL.ByReference purchaseData);
 		public int GetBetInstance(short place, byte raceNo,
 				byte year, byte month, byte day, byte houshiki,
 				byte shikibetsu, int kingaku, String kaime, ST_BET_DATA betData);
@@ -278,6 +279,9 @@ public class IpatHelper {
 			ticketCount = 0;
 			ticketData = null ;
 		}
+
+		// 変更: ポインタ渡し用の ByReference 内部クラスを追加
+		public static class ByReference extends ST_PURCHASE_DATA_INTERNAL implements Structure.ByReference {}
     }
 	
 	// 馬券情報
@@ -430,7 +434,10 @@ public class IpatHelper {
 		
 		int returnValue = m_iPatHelperInvoker.GetPurchaseData(tempPurchase);
 		if ((returnValue & 1) != 1) {
-			m_iPatHelperInvoker.ReleasePurchaseData(tempPurchase);
+			// 変更: ByReference でポインタ渡し
+			ST_PURCHASE_DATA_INTERNAL.ByReference ref = new ST_PURCHASE_DATA_INTERNAL.ByReference();
+			ref.useMemory(tempPurchase.getPointer(), 0);
+			m_iPatHelperInvoker.ReleasePurchaseData(ref);
 			return returnValue;
 		}
 
@@ -444,7 +451,10 @@ public class IpatHelper {
 		purchaseData.ticketData = new ST_TICKET_DATA[tempPurchase.ticketCount];
 		
 		if(tempPurchase.ticketCount <= 0) {
-			m_iPatHelperInvoker.ReleasePurchaseData(tempPurchase);
+			// 変更: ByReference でポインタ渡し
+			ST_PURCHASE_DATA_INTERNAL.ByReference ref = new ST_PURCHASE_DATA_INTERNAL.ByReference();
+			ref.useMemory(tempPurchase.getPointer(), 0);
+			m_iPatHelperInvoker.ReleasePurchaseData(ref);
 			return returnValue;
 		}
 		
@@ -464,7 +474,10 @@ public class IpatHelper {
 			purchaseData.ticketData[i].detailData = new ST_TICKET_DATA_DETAIL[ticketDataList.ticketList[i].detailCount];
 
 			if(ticketDataList.ticketList[i].detailCount <= 0) {
-				m_iPatHelperInvoker.ReleasePurchaseData(tempPurchase);
+				// 変更: ByReference でポインタ渡し
+			ST_PURCHASE_DATA_INTERNAL.ByReference ref = new ST_PURCHASE_DATA_INTERNAL.ByReference();
+			ref.useMemory(tempPurchase.getPointer(), 0);
+			m_iPatHelperInvoker.ReleasePurchaseData(ref);
 				return returnValue;
 			}
 			

@@ -656,7 +656,7 @@ extern	"C" {
 	/// </summary>
 	/// <param name="objStatus">”nŒ”w“ü—š—ğ</param>
 	void ReleasePurchaseData(
-		ST_PURCHASE_DATA objStatus
+		ST_PURCHASE_DATA* pobjStatus
 	);
 
 	/// <summary>

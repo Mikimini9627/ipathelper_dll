@@ -71,7 +71,7 @@ BEGIN
             VALUE "FileDescription", "IpatHelper-Cpp"
             VALUE "FileVersion", "2.0.0.1"
             VALUE "ProductVersion", "2.0.0.1"
-            VALUE "LegalCopyright", "Copyright (C) 2024 Mikimini9627"
+            VALUE "LegalCopyright", "Copyright (C) 2026 Mikimini9627"
 #if X64
             VALUE "InternalName", "IpatHelper-Cpp.exe x64"
             VALUE "OriginalFilename", "IpatHelper-Cpp.exe x64"

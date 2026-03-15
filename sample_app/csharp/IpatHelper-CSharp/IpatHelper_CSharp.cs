@@ -1,9 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Runtime.InteropServices;
 
-namespace IpatHelper_DotNetTestApl
+namespace IpatHelper_DotNetSampleApl
 {
     public class IpatHelper
     {
@@ -221,7 +221,7 @@ namespace IpatHelper_DotNetTestApl
             internal static extern uint GetPurchaseData(ref ST_PURCHASE_DATA_INTERNAL objPurchaseData);
 
             [DllImport("IpatHelper.dll", CallingConvention = CallingConvention.Cdecl)]
-            internal static extern void ReleasePurchaseData(ST_PURCHASE_DATA_INTERNAL objPurchaseData);
+            internal static extern void ReleasePurchaseData(ref ST_PURCHASE_DATA_INTERNAL objPurchaseData);
 
             [DllImport("IpatHelper.dll", CallingConvention = CallingConvention.Cdecl)]
             internal static extern uint GetBetInstance(ushort usKaisai,
@@ -323,7 +323,7 @@ namespace IpatHelper_DotNetTestApl
             uint returnValue = NativeMethods.GetPurchaseData(ref tempTicketData);
             if ((returnValue & 1) != 1)
             {
-                NativeMethods.ReleasePurchaseData(tempTicketData);
+                NativeMethods.ReleasePurchaseData(ref tempTicketData);
                 purchaseData = new ST_PURCHASE_DATA();
                 return returnValue;
             }
@@ -342,7 +342,7 @@ namespace IpatHelper_DotNetTestApl
 
             if (tempTicketData.ticketCount <= 0)
             {
-                NativeMethods.ReleasePurchaseData(tempTicketData);
+                NativeMethods.ReleasePurchaseData(ref tempTicketData);
                 return returnValue;
             }
 
@@ -380,7 +380,7 @@ namespace IpatHelper_DotNetTestApl
 
                 if (tempTicket.detailCount <= 0)
                 {
-                    NativeMethods.ReleasePurchaseData(tempTicketData);
+                    NativeMethods.ReleasePurchaseData(ref tempTicketData);
                     return returnValue;
                 }
 
@@ -406,7 +406,7 @@ namespace IpatHelper_DotNetTestApl
                 }
             }
 
-            NativeMethods.ReleasePurchaseData(tempTicketData);
+            NativeMethods.ReleasePurchaseData(ref tempTicketData);
 
             return returnValue;
         }
