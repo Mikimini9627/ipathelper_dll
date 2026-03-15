@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace IpatHelper_DotNetTestApl
+namespace IpatHelper_DotNetSampleApl
 {
     class Program
     {
@@ -34,7 +34,7 @@ namespace IpatHelper_DotNetTestApl
             }
 
             //馬券購入用のインスタンス取得(WIN5)
-            returnValue = IpatHelper.GetBetInstanceWin5(100, DateTime.Parse("2020/12/27"), 
+            returnValue = IpatHelper.GetBetInstanceWin5(100, DateTime.Parse("2020/12/27"),
                 "14-9,13-12-2-1,3,4,5", out IpatHelper.ST_BET_DATA_WIN5 objBetDataWin5);
             if ((returnValue & 1) != 1)
             {

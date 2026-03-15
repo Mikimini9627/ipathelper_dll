@@ -163,7 +163,7 @@ def init():
     lib.GetPurchaseData.argtypes = [c_void_p]
 
     lib.ReleasePurchaseData.restype = None
-    lib.ReleasePurchaseData.argtypes = [ST_PURCHASE_DATA_INTERNAL]
+    lib.ReleasePurchaseData.argtypes = [POINTER(ST_PURCHASE_DATA_INTERNAL)]
 
     lib.GetBetInstance.restype = c_uint
     lib.GetBetInstance.argtypes = [c_byte, c_byte, c_ushort, c_byte, c_byte, c_byte, c_byte, c_uint, c_char_p, c_void_p]
@@ -257,7 +257,7 @@ def get_purchase_data(purchaseData : ST_PURCHASE_DATA):
     purchaseData.TicketCount = tempPurchaseData.TicketCount
 
     if tempPurchaseData.TicketCount <= 0:
-        lib.ReleasePurchaseData(tempPurchaseData)
+        lib.ReleasePurchaseData(byref(tempPurchaseData))
         return returnValue
 
     # 馬券データ(全て)を格納するためのバッファを確保
@@ -286,7 +286,7 @@ def get_purchase_data(purchaseData : ST_PURCHASE_DATA):
         tempTicketData.ReceiptNo = oneTicketData.ReceiptNo
 
         if oneTicketData.DetailCount <= 0:
-            lib.ReleasePurchaseData(tempPurchaseData)
+            lib.ReleasePurchaseData(byref(tempPurchaseData))
             return returnValue
 
         # 詳細データ(全て)を格納するためのバッファを確保    
@@ -305,7 +305,7 @@ def get_purchase_data(purchaseData : ST_PURCHASE_DATA):
         # 馬券データを引数に追加する
         purchaseData.TicketData.append(tempTicketData)
     
-    lib.ReleasePurchaseData(tempPurchaseData)
+    lib.ReleasePurchaseData(byref(tempPurchaseData))
 
     return returnValue
 

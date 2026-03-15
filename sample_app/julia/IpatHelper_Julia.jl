@@ -241,7 +241,7 @@ function GetPurchaseData(purchase_data::ST_PURCHASE_DATA)::Int32
     get_purchase_data = (p_purcharse_data) -> ccall((:GetPurchaseData, LIB_NAME), Int32, (Ptr{ST_PURCHASE_DATA_INTERNAL},), p_purcharse_data,)
 
     # デリゲートを生成する(購入情報解放関数)
-    release_purchase_data = (purchase_data) -> ccall((:ReleasePurchaseData, LIB_NAME), Cvoid, (ST_PURCHASE_DATA_INTERNAL,), purchase_data,)
+    release_purchase_data = (p_purchase_data) -> ccall((:ReleasePurchaseData, LIB_NAME), Cvoid, (Ptr{ST_PURCHASE_DATA_INTERNAL},), p_purchase_data,)
 
     # マーシャリング用の構造体を生成
     array_purcharse_data_internal = [ST_PURCHASE_DATA_INTERNAL(0, 0, 0, 0, 0, 0, 0, C_NULL)]
@@ -256,7 +256,7 @@ function GetPurchaseData(purchase_data::ST_PURCHASE_DATA)::Int32
     purcharse_data_internal = array_purcharse_data_internal[1]
 
     if (result & 1) != 1
-        release_purchase_data(purcharse_data_internal)
+        release_purchase_data(p_purcharse_data)
         return result
     end
 
@@ -330,7 +330,7 @@ function GetPurchaseData(purchase_data::ST_PURCHASE_DATA)::Int32
     purchase_data.TicketData = array_ticket_data
 
     # 購入情報を解放する
-    release_purchase_data(purcharse_data_internal)
+    release_purchase_data(p_purcharse_data)
 
     return result
 
