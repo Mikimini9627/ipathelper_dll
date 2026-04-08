@@ -25,6 +25,7 @@
 
 ### 入出金
 - 登録口座からの入金 (`Deposit`) および出金 (`Withdraw`)
+- 通信失敗時のリトライ回数を引数で指定可能（デフォルト: 10回）
 - **自動入金フラグ** (`SetAutoDepositFlag`) を設定しておくと、馬券購入時に残高不足が検出された場合、あらかじめ指定した金額を自動入金してから購入に進みます
 
 ### 馬券購入状況の取得
@@ -62,10 +63,10 @@ unsigned int Login(const char szINetId[], const char szId[], const char szPasswo
 unsigned int Logout();
 
 // 入金
-unsigned int Deposit(const unsigned int unDepositValue);
+unsigned int Deposit(const unsigned int unDepositValue, const unsigned short usRetryCount = 10);
 
 // 出金
-unsigned int Withdraw();
+unsigned int Withdraw(const unsigned short usRetryCount = 10);
 
 // 馬券購入状況の取得
 unsigned int GetPurchaseData(ST_PURCHASE_DATA* pobjStatus);
