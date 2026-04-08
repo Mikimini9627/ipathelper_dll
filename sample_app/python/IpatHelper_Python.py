@@ -84,6 +84,8 @@ FAILED_CHIHOU = 8
 FAILED_COMMUNICATE_CHUOU = 16
 FAILED_COMMUNICATE_CHIHOU = 32
 
+DEFAULT_RETRY_COUNT = 10
+
 class ST_TICKET_DATA:
     def __init__(self):
         self.DayFlag = 0
@@ -154,10 +156,10 @@ def init():
     lib.Logout.argtypes = []
 
     lib.Deposit.restype = c_uint
-    lib.Deposit.argtypes = [c_ushort]
+    lib.Deposit.argtypes = [c_uint, c_ushort]
 
     lib.Withdraw.restype = c_uint
-    lib.Withdraw.argtypes = []
+    lib.Withdraw.argtypes = [c_ushort]
 
     lib.GetPurchaseData.restype = c_uint
     lib.GetPurchaseData.argtypes = [c_void_p]
@@ -213,23 +215,23 @@ def logout():
 
     return lib.Logout()
 
-def deposit(depositValue : int):
+def deposit(depositValue : int, retryCount : int = DEFAULT_RETRY_COUNT):
     '''
         入金処理実行
     '''
 
     global lib
 
-    return lib.Deposit(depositValue)
+    return lib.Deposit(depositValue, retryCount)
 
-def withdraw():
+def withdraw(retryCount : int = DEFAULT_RETRY_COUNT):
     '''
         出金処理実行
     '''
 
     global lib
 
-    return lib.Withdraw()
+    return lib.Withdraw(retryCount)
 
 def get_purchase_data(purchaseData : ST_PURCHASE_DATA):
     '''

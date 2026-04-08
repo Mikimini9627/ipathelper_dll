@@ -17,8 +17,8 @@ public class IpatHelper {
 
 		public int Login(String iNetId, String id, String password, String pars);
 		public int Logout();
-		public int Deposit(int depositValue);
-		public int Withdraw();
+		public int Deposit(int depositValue, short retryCount);
+		public int Withdraw(short retryCount);
 		public int GetPurchaseData(ST_PURCHASE_DATA_INTERNAL purchaseData);
 		// 変更: 値渡し → ポインタ渡し（ByReference）
 		public void ReleasePurchaseData(ST_PURCHASE_DATA_INTERNAL.ByReference purchaseData);
@@ -130,6 +130,7 @@ public class IpatHelper {
 	public class Constant{
 		public static final int DEPOSIT_DEFAULT_VALUE = 1000;
 		public static final int DEFAULT_CONFIRM_TIMEOUT = 10000;
+		public static final int DEFAULT_RETRY_COUNT = 10;
 	}
 
 	//戻り値
@@ -408,15 +409,25 @@ public class IpatHelper {
 	}
 
 	//入金
+	public int Deposit(int depositValue, int retryCount) {
+
+		return m_iPatHelperInvoker.Deposit(depositValue, (short)retryCount);
+	}
+
 	public int Deposit(int depositValue) {
 
-		return m_iPatHelperInvoker.Deposit(depositValue);
+		return Deposit(depositValue, Constant.DEFAULT_RETRY_COUNT);
 	}
 
 	//出金
+	public int Withdraw(int retryCount) {
+
+		return m_iPatHelperInvoker.Withdraw((short)retryCount);
+	}
+
 	public int Withdraw() {
 
-		return m_iPatHelperInvoker.Withdraw();
+		return Withdraw(Constant.DEFAULT_RETRY_COUNT);
 	}
 
 	//購入状況取得

@@ -4,6 +4,7 @@
 constexpr auto DEPOSIT_DEFAULT_VALUE		= 1000;	// 自動入金のデフォルト値(ms)
 constexpr auto DEFAULT_CONFIRM_TIMEOUT		= 10000;// 自動入金時のデフォルトタイムアウト(ms)
 constexpr auto DEFAULT_BET_TIMEOUT			= 500;	// 馬券購入間隔のデフォルト値
+constexpr auto DEFAULT_RETRY_COUNT			= 10;	// 入出金処理のデフォルトリトライ回数
 
 constexpr auto WIN5_RACE_COUNT				= 5;	// WIN5のレース数
 constexpr auto UMABAN_COLUMN_COUNT			= 3;	// フォーメーションでの列数
@@ -611,7 +612,8 @@ extern	"C" {
 	/// <param name="unDepositValue">入金額</param>
 	/// <returns></returns>
 	unsigned int Deposit(
-		const unsigned int unDepositValue
+		const unsigned int unDepositValue,
+		const unsigned short usRetryCount = DEFAULT_RETRY_COUNT
 	);
 
 	/// <summary>
@@ -619,6 +621,7 @@ extern	"C" {
 	/// </summary>
 	/// <returns></returns>
 	unsigned int Withdraw(
+		const unsigned short usRetryCount = DEFAULT_RETRY_COUNT
 	);
 
 	/// <summary>

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Runtime.InteropServices;
@@ -212,10 +212,10 @@ namespace IpatHelper_DotNetSampleApl
             internal static extern uint Logout();
 
             [DllImport("IpatHelper.dll", CallingConvention = CallingConvention.Cdecl)]
-            internal static extern uint Deposit(uint unDepositValue);
+            internal static extern uint Deposit(uint unDepositValue, ushort usRetryCount);
 
             [DllImport("IpatHelper.dll", CallingConvention = CallingConvention.Cdecl)]
-            internal static extern uint Withdraw();
+            internal static extern uint Withdraw(ushort usRetryCount);
 
             [DllImport("IpatHelper.dll", CallingConvention = CallingConvention.Cdecl)]
             internal static extern uint GetPurchaseData(ref ST_PURCHASE_DATA_INTERNAL objPurchaseData);
@@ -287,18 +287,18 @@ namespace IpatHelper_DotNetSampleApl
         /// </summary>
         /// <param name="depositValue"></param>
         /// <returns></returns>
-        public static uint Deposit(uint depositValue)
+        public static uint Deposit(uint depositValue, ushort retryCount = 10)
         {
-            return NativeMethods.Deposit(depositValue);
+            return NativeMethods.Deposit(depositValue, retryCount);
         }
 
         /// <summary>
         /// 出金処理実行
         /// </summary>
         /// <returns></returns>
-        public static uint Withdraw()
+        public static uint Withdraw(ushort retryCount = 10)
         {
-            return NativeMethods.Withdraw();
+            return NativeMethods.Withdraw(retryCount);
         }
 
         /// <summary>

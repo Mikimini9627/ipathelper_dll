@@ -56,6 +56,8 @@ const FAILED_CHIHOU = 8
 const FAILED_COMMUNICATE_CHUOU = 16
 const FAILED_COMMUNICATE_CHIHOU = 32
 
+const DEFAULT_RETRY_COUNT = 10
+
 struct ST_TICKET_DATA_DETAIL_INTERNAL
     DecisionFlag::UInt8
     BetFlag::UInt8
@@ -211,10 +213,10 @@ Deposit
 ---
 入金処理実行
 """
-function Deposit(depositValue::Int64)::Int32
+function Deposit(depositValue::Int64, retryCount::Int64=DEFAULT_RETRY_COUNT)::Int32
 
     # デリゲートを生成する(入金関数)
-    return ccall((:Deposit, LIB_NAME), Int32, (UInt16, ), depositValue, )
+    return ccall((:Deposit, LIB_NAME), Int32, (UInt32, UInt16, ), depositValue, retryCount, )
     
 end
 
@@ -223,10 +225,10 @@ Withdraw
 ---
 出金処理実行
 """
-function Withdraw()::Int32
+function Withdraw(retryCount::Int64=DEFAULT_RETRY_COUNT)::Int32
 
     # デリゲートを生成する(出金関数)
-    return ccall((:Withdraw, LIB_NAME), Int32, (),)
+    return ccall((:Withdraw, LIB_NAME), Int32, (UInt16, ), retryCount, )
     
 end
 
