@@ -16,7 +16,6 @@ namespace IpatHelper_DotNetSampleApl
             public ushort kaisai;
             public byte raceNo;
             public byte week;
-            public byte youbi;
             public byte method;
             public byte type;
             [MarshalAs(UnmanagedType.ByValArray, SizeConst = 5)]

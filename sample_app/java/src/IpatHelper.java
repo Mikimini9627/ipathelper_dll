@@ -149,7 +149,7 @@ public class IpatHelper {
 		@Override
         protected List<String> getFieldOrder() {
             return Arrays.asList("decisionFlag", "betFlag", "kaisai", 
-            		"raceNo", "week", "youbi", "method", "type", "horseNo", "multi");
+            		"raceNo", "week", "method", "type", "horseNo", "multi");
         }
 		
 		public byte decisionFlag;
@@ -157,7 +157,6 @@ public class IpatHelper {
 		public short kaisai;
 		public byte raceNo;
 		public byte week;
-		public byte youbi;
 		public byte method;
 		public byte type;
 		public int[] horseNo;
@@ -170,7 +169,6 @@ public class IpatHelper {
 			kaisai = 0;
 			raceNo = 0;
 			week = 0;
-			youbi = 0;
 			method = 0;
 			type = 0;
 			horseNo = new int[5];

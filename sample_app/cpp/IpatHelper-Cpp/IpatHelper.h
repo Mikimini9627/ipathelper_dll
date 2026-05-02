@@ -1,4 +1,4 @@
-#ifndef _IPAT_HELPER_H
+﻿#ifndef _IPAT_HELPER_H
 #define _IPAT_HELPER_H
 
 constexpr auto DEPOSIT_DEFAULT_VALUE		= 1000;	// 自動入金のデフォルト値(ms)
@@ -398,11 +398,6 @@ extern	"C" {
 		/// 週
 		/// </summary>
 		unsigned char ucWeek;
-
-		/// <summary>
-		/// 曜日
-		/// </summary>
-		unsigned char ucYoubi;
 
 		/// <summary>
 		/// 方式

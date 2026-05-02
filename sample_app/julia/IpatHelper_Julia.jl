@@ -66,7 +66,6 @@ struct ST_TICKET_DATA_DETAIL_INTERNAL
     Kaisai::UInt16
     RaceNo::UInt8
     Week::UInt8
-    Youbi::UInt8
     Method::UInt8
     Type::UInt8
     HorseNo1::UInt32
@@ -128,7 +127,6 @@ mutable struct ST_TICKET_DATA_DETAIL
     Kaisai::UInt16
     RaceNo::UInt8
     Week::UInt8
-    Youbi::UInt8
     Method::UInt8
     Type::UInt8
     HorseNo::Array{UInt32, 1}
@@ -310,7 +308,6 @@ function GetPurchaseData(purchase_data::ST_PURCHASE_DATA)::Int32
             detail_data.Kaisai = detail_data_internal.Kaisai
             detail_data.RaceNo = detail_data_internal.RaceNo
             detail_data.Week = detail_data_internal.Week
-            detail_data.Youbi = detail_data_internal.Youbi
             detail_data.Method = detail_data_internal.Method
             detail_data.Type = detail_data_internal.Type
             push!(detail_data.HorseNo, detail_data_internal.HorseNo1)

@@ -113,7 +113,7 @@ class ST_PURCHASE_DATA:
 #構造体マーシャリング用クラス
 class ST_TICKET_DATA_DETAIL(Structure):
     _fields_ = [("DecisionFlag", c_byte), ("BetFlag", c_byte), ("Kaisai", c_ushort), ("RaceNo", c_byte), \
-        ("Week", c_byte), ("Youbi", c_byte), ("Method", c_byte), ("Type", c_byte), ("HorseNo1", c_uint), 
+        ("Week", c_byte), ("Method", c_byte), ("Type", c_byte), ("HorseNo1", c_uint), 
         ("HorseNo2", c_uint), ("HorseNo3", c_uint), ("HorseNo4", c_uint), ("HorseNo5", c_uint), ("Multi", c_byte)]
 
 class ST_TICKET_DATA_INTERNAL(Structure):
