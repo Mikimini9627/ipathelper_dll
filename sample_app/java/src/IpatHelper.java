@@ -393,7 +393,6 @@ public class IpatHelper {
 		}else {
 			m_iPatHelperInvoker = (IpatHelperInvoker)Native.loadLibrary(".\\library\\x86\\IpatHelper.dll", IpatHelperInvoker.class);
 		}
-		
 	}
 
 	//ログイン
@@ -445,7 +444,6 @@ public class IpatHelper {
 		
 		int returnValue = m_iPatHelperInvoker.GetPurchaseData(tempPurchase);
 		if ((returnValue & 1) != 1) {
-			// 変更: ByReference でポインタ渡し
 			ST_PURCHASE_DATA_INTERNAL.ByReference ref = new ST_PURCHASE_DATA_INTERNAL.ByReference();
 			ref.useMemory(tempPurchase.getPointer(), 0);
 			m_iPatHelperInvoker.ReleasePurchaseData(ref);
@@ -462,7 +460,6 @@ public class IpatHelper {
 		purchaseData.ticketData = new ST_TICKET_DATA[tempPurchase.ticketCount];
 		
 		if(tempPurchase.ticketCount <= 0) {
-			// 変更: ByReference でポインタ渡し
 			ST_PURCHASE_DATA_INTERNAL.ByReference ref = new ST_PURCHASE_DATA_INTERNAL.ByReference();
 			ref.useMemory(tempPurchase.getPointer(), 0);
 			m_iPatHelperInvoker.ReleasePurchaseData(ref);
@@ -485,7 +482,6 @@ public class IpatHelper {
 			purchaseData.ticketData[i].detailData = new ST_TICKET_DATA_DETAIL[ticketDataList.ticketList[i].detailCount];
 
 			if(ticketDataList.ticketList[i].detailCount <= 0) {
-				// 変更: ByReference でポインタ渡し
 			ST_PURCHASE_DATA_INTERNAL.ByReference ref = new ST_PURCHASE_DATA_INTERNAL.ByReference();
 			ref.useMemory(tempPurchase.getPointer(), 0);
 			m_iPatHelperInvoker.ReleasePurchaseData(ref);
@@ -496,7 +492,6 @@ public class IpatHelper {
 			ST_TICKET_DATA_DETAIL_LIST_INTERNAL detailDataList = new ST_TICKET_DATA_DETAIL_LIST_INTERNAL(ticketDataList.ticketList[i].detailData, ticketDataList.ticketList[i].detailCount);
 
 			for (int j = 0; j < ticketDataList.ticketList[i].detailCount; j++){
-
 				purchaseData.ticketData[i].detailData[j] = detailDataList.detailDataList[j];
 			}
 		}
@@ -515,26 +510,22 @@ public class IpatHelper {
 
 	//投票
 	public int Bet(ST_BET_DATA[] betData, int betCount, int waitMilliSeconds) {
-
 		return m_iPatHelperInvoker.Bet(betData, (short)betCount , (short)waitMilliSeconds);
 	}
 
 	//自動入金機能設定
 	public int SetAutoDepositFlag(boolean enable, int depositValue, int confirmTimeout) {
-
 		return m_iPatHelperInvoker.SetAutoDepositFlag(enable, depositValue, (short)confirmTimeout);
 	}
 
 	//ベットインスタンス取得(Win5)
 	public int GetBetInstanceWin5(int kingaku, int year,
 			int month, int day, String kaime, ST_BET_DATA_WIN5 betData) {
-
 		return m_iPatHelperInvoker.GetBetInstanceWin5(kingaku, (byte)year, (byte)month, (byte)day, kaime, betData);
 	}
 
 	//投票(Win5)
 	public int BetWin5(ST_BET_DATA_WIN5 betData, int waitMilliSeconds) {
-
 		return m_iPatHelperInvoker.BetWin5(betData, (short)waitMilliSeconds);
 	}
 }

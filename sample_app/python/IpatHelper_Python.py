@@ -85,6 +85,8 @@ FAILED_COMMUNICATE_CHUOU = 16
 FAILED_COMMUNICATE_CHIHOU = 32
 
 DEFAULT_RETRY_COUNT = 10
+DEFAULT_WAIT_TIME = 1000
+DEFAULT_CONFIRM_TIMEOUT = 10000
 
 class ST_TICKET_DATA:
     def __init__(self):
@@ -198,7 +200,7 @@ def uninit():
 
     windll.kernel32.FreeLibrary(libraryHandle)
 
-def login(iNetId : str, id : str, password : str, pars : str):
+def login(iNetId : str, id : str, password : str, pars : str) -> int:
     '''
         ログイン処理実行
     '''
@@ -207,7 +209,7 @@ def login(iNetId : str, id : str, password : str, pars : str):
 
     return lib.Login(iNetId.encode('utf-8'), id.encode('utf-8'), password.encode('utf-8'), pars.encode('utf-8'))
 
-def logout():
+def logout() -> int:
     '''
         ログアウト処理実行
     '''
@@ -216,7 +218,7 @@ def logout():
 
     return lib.Logout()
 
-def deposit(depositValue : int, retryCount : int = DEFAULT_RETRY_COUNT):
+def deposit(depositValue : int, retryCount : int = DEFAULT_RETRY_COUNT) -> int:
     '''
         入金処理実行
     '''
@@ -225,7 +227,7 @@ def deposit(depositValue : int, retryCount : int = DEFAULT_RETRY_COUNT):
 
     return lib.Deposit(depositValue, retryCount)
 
-def withdraw(retryCount : int = DEFAULT_RETRY_COUNT):
+def withdraw(retryCount : int = DEFAULT_RETRY_COUNT) -> int:
     '''
         出金処理実行
     '''
@@ -234,7 +236,7 @@ def withdraw(retryCount : int = DEFAULT_RETRY_COUNT):
 
     return lib.Withdraw(retryCount)
 
-def get_purchase_data(purchaseData : ST_PURCHASE_DATA):
+def get_purchase_data(purchaseData : ST_PURCHASE_DATA) -> int:
     '''
         購入状況取得処理実行
     '''
@@ -313,7 +315,7 @@ def get_purchase_data(purchaseData : ST_PURCHASE_DATA):
     return returnValue
 
 def get_bet_instance(kaisai : int, raceNo : int, year : int, month : int, day : int, \
-                    houshiki : int, shikibetsu : int, kingaku : int, kaime : str, betData : ST_BET_DATA):
+                    houshiki : int, shikibetsu : int, kingaku : int, kaime : str, betData : ST_BET_DATA) -> int:
     '''
         馬券購入用インスタンス取得処理
     '''
@@ -322,7 +324,7 @@ def get_bet_instance(kaisai : int, raceNo : int, year : int, month : int, day : 
 
     return lib.GetBetInstance(kaisai, raceNo, year, month, day, houshiki, shikibetsu, kingaku, kaime.encode('utf-8'), byref(betData))
 
-def get_bet_instance_win5(kingaku : int, year : int, month : int, day : int, kaime : str, betData : ST_BET_DATA_WIN5):
+def get_bet_instance_win5(kingaku : int, year : int, month : int, day : int, kaime : str, betData : ST_BET_DATA_WIN5) -> int:
     '''
         馬券購入用インスタンス取得処理(WIN5)
     '''
@@ -331,7 +333,7 @@ def get_bet_instance_win5(kingaku : int, year : int, month : int, day : int, kai
 
     return lib.GetBetInstanceWin5(kingaku, year, month, day, kaime.encode('utf-8'), byref(betData))
 
-def bet(betDataList : list, listCount : int, waitMiliSeconds  : int):
+def bet(betDataList : list, listCount : int, waitMiliSeconds  : int = DEFAULT_WAIT_TIME) -> int:
     '''
         馬券購入処理実行
     '''
@@ -340,7 +342,7 @@ def bet(betDataList : list, listCount : int, waitMiliSeconds  : int):
     
     return lib.Bet(betDataList, listCount, waitMiliSeconds)
 
-def bet_win5(betData : ST_BET_DATA_WIN5, waitMiliSeconds : int):
+def bet_win5(betData : ST_BET_DATA_WIN5, waitMiliSeconds : int = DEFAULT_WAIT_TIME) -> int:
     '''
         馬券購入処理実行(WIN5)
     '''
@@ -349,7 +351,7 @@ def bet_win5(betData : ST_BET_DATA_WIN5, waitMiliSeconds : int):
     
     return lib.BetWin5(betData, waitMiliSeconds)
 
-def set_auto_deposit_flag(enable : bool, depositValue : int, confirmTimeout : int):
+def set_auto_deposit_flag(enable : bool, depositValue : int, confirmTimeout : int = DEFAULT_CONFIRM_TIMEOUT) -> int:
     '''
         自動入金機能フラグ設定
     '''

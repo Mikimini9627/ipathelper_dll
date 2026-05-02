@@ -57,6 +57,8 @@ const FAILED_COMMUNICATE_CHUOU = 16
 const FAILED_COMMUNICATE_CHIHOU = 32
 
 const DEFAULT_RETRY_COUNT = 10
+const DEFAULT_WAIT_TIME = 1000
+const DEFAULT_CONFIRM_TIMEOUT = 10000
 
 struct ST_TICKET_DATA_DETAIL_INTERNAL
     DecisionFlag::UInt8
@@ -391,7 +393,7 @@ Bet
 ---
 通常投票処理
 """
-function Bet(bet_data_list::Array{ST_BET_DATA, 1}, wait_time::Int64)::Int32
+function Bet(bet_data_list::Array{ST_BET_DATA, 1}, wait_time::Int64=DEFAULT_WAIT_TIME)::Int32
 
     # デリゲートを生成する(通常投票関数)
     bet = (bet_data_list, length, wait_time, ) -> ccall((:Bet, LIB_NAME), Int32, (Ptr{ST_BET_DATA_INTERNAL},
@@ -460,7 +462,7 @@ BetWin5
 ---
 馬券購入処理実行(WIN5)
 """
-function BetWin5(bet_data::ST_BET_DATA_WIN5, wait_time::Int64)::Int32
+function BetWin5(bet_data::ST_BET_DATA_WIN5, wait_time::Int64=DEFAULT_WAIT_TIME)::Int32
 
     # デリゲートを生成する(WIN5投票関数)
     bet = (bet_data, wait_time, ) -> ccall((:BetWin5, LIB_NAME), Int32, (ST_BET_DATA_WIN5_INTERNAL, UInt16, ), bet_data, wait_time, )
@@ -478,7 +480,7 @@ SetAutoDepositFlag
 ---
 自動入金フラグ設定
 """
-function SetAutoDepositFlag(enable::Bool, deposit_value::Int32, confirm_timeout::Int32)::Int32
+function SetAutoDepositFlag(enable::Bool, deposit_value::Int32, confirm_timeout::Int32=DEFAULT_CONFIRM_TIMEOUT)::Int32
 
     # デリゲートを生成する(自動入金フラグ設定関数)
     return ccall((:SetAutoDepositFlag, LIB_NAME), Int32, (Bool, UInt32, UInt16, ), enable, deposit_value, confirm_timeout, )
