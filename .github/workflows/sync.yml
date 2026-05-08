@@ -21,14 +21,14 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: Mikimini9627/ipathelper
-          # token: ${{ secrets.SYNC_TOKEN }}
+          token: ${{ secrets.SYNC_TOKEN }}
           path: repo_ipathelper
 
       - name: Checkout IpatHelperNet
         uses: actions/checkout@v4
         with:
           repository: Mikimini9627/IpatHelperNet
-          # token: ${{ secrets.SYNC_TOKEN }}
+          token: ${{ secrets.SYNC_TOKEN }}
           path: repo_ipathelperNet
 
       - name: Copy DLLs to ipathelper
