@@ -1,0 +1,62 @@
+name: Sync DLL to other repositories
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'builds/x64/IpatHelper.dll'
+      - 'builds/x86/IpatHelper.dll'
+    branches:
+      - main
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout ipathelper_dll
+        uses: actions/checkout@v4
+
+      - name: Checkout ipathelper
+        uses: actions/checkout@v4
+        with:
+          repository: Mikimini9627/ipathelper
+          # token: ${{ secrets.SYNC_TOKEN }}
+          path: repo_ipathelper
+
+      - name: Checkout IpatHelperNet
+        uses: actions/checkout@v4
+        with:
+          repository: Mikimini9627/IpatHelperNet
+          # token: ${{ secrets.SYNC_TOKEN }}
+          path: repo_ipathelperNet
+
+      - name: Copy DLLs to ipathelper
+        run: |
+          cp builds/x64/IpatHelper.dll repo_ipathelper/ipathelper/x64/IpatHelper.dll
+          cp builds/x86/IpatHelper.dll repo_ipathelper/ipathelper/x86/IpatHelper.dll
+
+      - name: Copy DLLs to IpatHelperNet
+        run: |
+          cp builds/x64/IpatHelper.dll repo_ipathelperNet/IpatHelperNet/runtimes/win-x64/native/IpatHelper.dll
+          cp builds/x86/IpatHelper.dll repo_ipathelperNet/IpatHelperNet/runtimes/win-x86/native/IpatHelper.dll
+
+      - name: Commit and push ipathelper
+        run: |
+          cd repo_ipathelper
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add ipathelper/x64/IpatHelper.dll ipathelper/x86/IpatHelper.dll
+          git diff --cached --quiet && echo "No changes" && exit 0
+          git commit -m "Sync IpatHelper.dll from ipathelper_dll@${{ github.sha }}"
+          git push
+
+      - name: Commit and push IpatHelperNet
+        run: |
+          cd repo_ipathelperNet
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add IpatHelperNet/runtimes/win-x64/native/IpatHelper.dll IpatHelperNet/runtimes/win-x86/native/IpatHelper.dll
+          git diff --cached --quiet && echo "No changes" && exit 0
+          git commit -m "Sync IpatHelper.dll from ipathelper_dll@${{ github.sha }}"
+          git push
