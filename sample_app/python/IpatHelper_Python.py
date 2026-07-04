@@ -180,7 +180,7 @@ def init():
     lib.GetBetInstanceWin5.argtypes = [c_uint, c_ushort, c_byte, c_byte, c_char_p, c_void_p]
 
     lib.BetWin5.restype = c_uint
-    lib.BetWin5.argtypes = [c_void_p, c_ushort]
+    lib.BetWin5.argtypes = [ST_BET_DATA_WIN5, c_ushort]
 
     lib.SetAutoDepositFlag.restype = c_uint
     lib.SetAutoDepositFlag.argtypes = [c_bool, c_ushort, c_ushort]
