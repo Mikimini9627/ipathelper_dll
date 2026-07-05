@@ -13,7 +13,18 @@ public class Program {
 			System.out.println("ログインに失敗しました。");
 			return;
 		}
-		
+
+		//オッズ取得(馬連・中央競馬のみ)。解放はラッパー内部で実施される
+		IpatHelper.ST_ODDS_DATA oddsData = new IpatHelper.ST_ODDS_DATA();
+		returnValue = iPatHelper.GetOdds(IpatHelper.Kaisai.KAISAI_TOKYO, 11, IpatHelper.Shikibetsu.SHIKIBETSU_QUINELLA, oddsData);
+		if((returnValue & 1) == 1) {
+			System.out.println("オッズ更新時刻: " + oddsData.oddsTime + " / 明細数: " + oddsData.detailCount);
+			for (IpatHelper.ST_ODDS_DETAIL detail : oddsData.oddsDetail) {
+				String oddsText = (detail.status == 0) ? String.format("%.1f", detail.odds / 10.0) : ("status=" + detail.status);
+				System.out.println("  " + detail.horse1 + "-" + detail.horse2 + " : " + oddsText);
+			}
+		}
+
 		//買い目取得
 		IpatHelper.ST_BET_DATA betData = new IpatHelper.ST_BET_DATA();
 		returnValue = iPatHelper.GetBetInstance(IpatHelper.Kaisai.KAISAI_TOKYO, 11, 2021, 3, 14, IpatHelper.Houshiki.HOUSHIKI_NORMAL, 

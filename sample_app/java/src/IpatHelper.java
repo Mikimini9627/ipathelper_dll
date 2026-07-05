@@ -30,6 +30,8 @@ public class IpatHelper {
 		public int GetBetInstanceWin5(int kingaku, byte year,
 				byte month, byte day, String kaime, ST_BET_DATA_WIN5 betData);
 		public int BetWin5(ST_BET_DATA_WIN5 betData, short waitMilliSeconds);
+		public int GetOdds(short place, byte raceNo, byte shikibetsu, ST_ODDS_DATA_INTERNAL oddsData);
+		public void ReleaseOddsData(ST_ODDS_DATA_INTERNAL.ByReference oddsData);
 	}
 
 	//開催
@@ -85,6 +87,13 @@ public class IpatHelper {
 		public static final int SHIKIBETSU_EXACTA = 6;
 		public static final int SHIKIBETSU_TRIO = 7;
 		public static final int SHIKIBETSU_TRIFECTA = 8;
+	}
+
+	//オッズ状態
+	public class OddsStatus{
+		public static final int ODDS_STATUS_NORMAL = 0;
+		public static final int ODDS_STATUS_CANCEL = 1;
+		public static final int ODDS_STATUS_UNACQUIRED = 2;
 	}
 
 	//馬券購入日タイプ
@@ -381,6 +390,98 @@ public class IpatHelper {
 		}
 	}
 
+	// オッズ明細
+	public static class ST_ODDS_DETAIL extends Structure {
+
+		@Override
+        protected List<String> getFieldOrder() {
+            return Arrays.asList("type", "horse1", "horse2", "horse3", "status", "odds", "oddsHigh");
+        }
+
+		public byte type;      // 式別(Shikibetsu)
+		public byte horse1;    // 馬番/枠番1
+		public byte horse2;    // 馬番/枠番2(単勝・複勝は0)
+		public byte horse3;    // 馬番3(三連複・三連単のみ、それ以外0)
+		public byte status;    // 0:通常 1:発売中止 2:オッズ未取得
+		public int odds;       // オッズ×10(複勝・ワイドは下限)
+		public int oddsHigh;   // 複勝・ワイドの上限×10(それ以外0)
+
+		public ST_ODDS_DETAIL() {
+			type = 0;
+			horse1 = 0;
+			horse2 = 0;
+			horse3 = 0;
+			status = 0;
+			odds = 0;
+			oddsHigh = 0;
+		}
+
+		public static int GetSize(){
+			return 16;
+		}
+	};
+
+	// オッズ明細リスト(内部使用)
+	public static class ST_ODDS_DETAIL_LIST_INTERNAL extends Structure {
+
+		@Override
+        protected List<String> getFieldOrder() {
+            return Arrays.asList("detailList");
+        }
+
+		public ST_ODDS_DETAIL[] detailList;
+
+		public ST_ODDS_DETAIL_LIST_INTERNAL(Pointer sourcePointer, int detailCount) {
+	        super(sourcePointer);
+	        detailList = new ST_ODDS_DETAIL[detailCount];
+	        read();
+	    }
+	};
+
+	// オッズ情報(内部使用)
+	public static class ST_ODDS_DATA_INTERNAL extends Structure {
+
+		@Override
+        protected List<String> getFieldOrder() {
+            return Arrays.asList("place", "raceNo", "oddsTime", "detailCount", "detailData");
+        }
+
+		public short place;
+		public byte raceNo;
+		public byte[] oddsTime;
+		public int detailCount;
+		public Pointer detailData;
+
+		public ST_ODDS_DATA_INTERNAL() {
+			place = 0;
+			raceNo = 0;
+			oddsTime = new byte[8];
+			detailCount = 0;
+			detailData = null;
+		}
+
+		// ポインタ渡し用の ByReference 内部クラス
+		public static class ByReference extends ST_ODDS_DATA_INTERNAL implements Structure.ByReference {}
+	};
+
+	// オッズ情報
+	public static class ST_ODDS_DATA {
+
+		public short place;
+		public byte raceNo;
+		public String oddsTime;
+		public int detailCount;
+		public ST_ODDS_DETAIL[] oddsDetail;
+
+		public ST_ODDS_DATA() {
+			place = 0;
+			raceNo = 0;
+			oddsTime = "";
+			detailCount = 0;
+			oddsDetail = null;
+		}
+	}
+
 	//コンストラクタ
 	@SuppressWarnings("deprecation")
 	public IpatHelper()
@@ -525,5 +626,49 @@ public class IpatHelper {
 	//投票(Win5)
 	public int BetWin5(ST_BET_DATA_WIN5 betData, int waitMilliSeconds) {
 		return m_iPatHelperInvoker.BetWin5(betData, (short)waitMilliSeconds);
+	}
+
+	//オッズ取得(中央競馬のみ)
+	public int GetOdds(int place, int raceNo, int shikibetsu, ST_ODDS_DATA oddsData) {
+
+		ST_ODDS_DATA_INTERNAL tempOdds = new ST_ODDS_DATA_INTERNAL();
+
+		int returnValue = m_iPatHelperInvoker.GetOdds((short)place, (byte)raceNo, (byte)shikibetsu, tempOdds);
+
+		oddsData.place = tempOdds.place;
+		oddsData.raceNo = tempOdds.raceNo;
+		oddsData.oddsTime = ByteArrayToString(tempOdds.oddsTime);
+		oddsData.detailCount = tempOdds.detailCount;
+		oddsData.oddsDetail = new ST_ODDS_DETAIL[Math.max(tempOdds.detailCount, 0)];
+
+		// 取得失敗・明細なしはここで解放して戻る
+		if ((returnValue & 1) != 1 || tempOdds.detailCount <= 0 || tempOdds.detailData == null) {
+			ST_ODDS_DATA_INTERNAL.ByReference ref = new ST_ODDS_DATA_INTERNAL.ByReference();
+			ref.useMemory(tempOdds.getPointer(), 0);
+			m_iPatHelperInvoker.ReleaseOddsData(ref);
+			return returnValue;
+		}
+
+		// ポインターからオッズ明細リストを取得する
+		ST_ODDS_DETAIL_LIST_INTERNAL detailList = new ST_ODDS_DETAIL_LIST_INTERNAL(tempOdds.detailData, tempOdds.detailCount);
+		for (int i = 0; i < tempOdds.detailCount; i++) {
+			oddsData.oddsDetail[i] = detailList.detailList[i];
+		}
+
+		// 取得と同時にネイティブ側のメモリを解放する
+		ST_ODDS_DATA_INTERNAL.ByReference ref = new ST_ODDS_DATA_INTERNAL.ByReference();
+		ref.useMemory(tempOdds.getPointer(), 0);
+		m_iPatHelperInvoker.ReleaseOddsData(ref);
+
+		return returnValue;
+	}
+
+	//オッズ更新時刻(byte[8]、終端まで)を文字列へ変換する
+	private static String ByteArrayToString(byte[] bytes) {
+		int length = 0;
+		while (length < bytes.length && bytes[length] != 0) {
+			length++;
+		}
+		return new String(bytes, 0, length, java.nio.charset.StandardCharsets.US_ASCII);
 	}
 }

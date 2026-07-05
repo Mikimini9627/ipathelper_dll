@@ -14,6 +14,18 @@ namespace IpatHelper_DotNetSampleApl
                 return;
             }
 
+            //オッズ取得(馬連・中央競馬のみ)。解放はラッパー内部で実施される
+            returnValue = IpatHelper.GetOdds(IpatHelper.Kaisai.TOKYO, 11, IpatHelper.Shikibetsu.QUINELLA, out IpatHelper.ST_ODDS_DATA oddsData);
+            if ((returnValue & 1) == 1)
+            {
+                Console.WriteLine($"Odds Time: {oddsData.oddsTime} / Count: {oddsData.detailCount}");
+                foreach (var detail in oddsData.oddsDetail)
+                {
+                    string oddsText = detail.status == 0 ? (detail.odds / 10.0).ToString("0.0") : $"status={detail.status}";
+                    Console.WriteLine($"  {detail.horse1}-{detail.horse2} : {oddsText}");
+                }
+            }
+
             //馬券購入用のインスタンス取得
             returnValue = IpatHelper.GetBetInstance(IpatHelper.Kaisai.NAKAYAMA, 11, DateTime.Parse("2020/12/27"),
                 IpatHelper.Houshiki.FORMATION, IpatHelper.Shikibetsu.TRIO, 100, "9-13-7,3,8,10", out IpatHelper.ST_BET_DATA objBetData);

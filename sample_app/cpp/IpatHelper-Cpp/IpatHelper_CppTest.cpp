@@ -15,6 +15,24 @@ int main()
 		return 1;
 	}
 
+	// オッズ取得(馬連・中央競馬のみ)。取得後は必ず ReleaseOddsData で解放する
+	ST_ODDS_DATA objOdds = { 0 };
+	unReturn = GetOdds((unsigned short)KAISAI::TOKYO, 11, (unsigned char)SHIKIBETSU::QUINELLA, &objOdds);
+	if ((unReturn & 1) == 1) {
+		cout << "Odds Time: " << objOdds.szOddsTime << " / Count: " << objOdds.unDetailCount << endl;
+		for (unsigned int i = 0; i < objOdds.unDetailCount; i++) {
+			const ST_ODDS_DETAIL& detail = objOdds.pobjDetail[i];
+			cout << "  " << (int)detail.ucHorse1 << "-" << (int)detail.ucHorse2 << " : ";
+			if (detail.ucStatus == 0) {
+				cout << (detail.unOdds / 10.0) << endl; // 実際の倍率 = unOdds / 10.0
+			}
+			else {
+				cout << "status=" << (int)detail.ucStatus << endl; // 1:cancel 2:unacquired
+			}
+		}
+	}
+	ReleaseOddsData(&objOdds);
+
 	// 馬券購入用のインスタンス取得
 	ST_BET_DATA objBetData = { 0 };
 	unReturn = GetBetInstance((unsigned char)KAISAI::NAKAYAMA, 11, 2020, 12, 27,

@@ -95,6 +95,38 @@ namespace IpatHelper_DotNetSampleApl
             [MarshalAs(UnmanagedType.ByValArray, SizeConst = 5)]
             public uint[] horseNo;
         };
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct ST_ODDS_DETAIL
+        {
+            public byte type;       // 式別(Shikibetsu)
+            public byte horse1;     // 馬番/枠番1
+            public byte horse2;     // 馬番/枠番2(単勝・複勝は0)
+            public byte horse3;     // 馬番3(三連複・三連単のみ、それ以外0)
+            public byte status;     // 0:通常 1:発売中止 2:オッズ未取得
+            public uint odds;       // オッズ×10(複勝・ワイドは下限)
+            public uint oddsHigh;   // 複勝・ワイドの上限×10(それ以外0)
+        };
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct ST_ODDS_DATA_INTERNAL
+        {
+            public ushort place;
+            public byte raceNo;
+            [MarshalAs(UnmanagedType.ByValArray, SizeConst = 8)]
+            public byte[] oddsTime;
+            public uint detailCount;
+            public IntPtr detailData;
+        };
+
+        public struct ST_ODDS_DATA
+        {
+            public ushort place;
+            public byte raceNo;
+            public string oddsTime;
+            public uint detailCount;
+            public ST_ODDS_DETAIL[] oddsDetail;
+        };
         #endregion
 
         #region 列挙体
@@ -250,6 +282,12 @@ namespace IpatHelper_DotNetSampleApl
 
             [DllImport("IpatHelper.dll", CallingConvention = CallingConvention.Cdecl)]
             internal static extern uint SetAutoDepositFlag([MarshalAs(UnmanagedType.I1)] bool bEnable, uint unDepositValue, ushort usConfrimTimeout);
+
+            [DllImport("IpatHelper.dll", CallingConvention = CallingConvention.Cdecl)]
+            internal static extern uint GetOdds(ushort usKaisai, byte byRaceNo, byte byShikibetsu, ref ST_ODDS_DATA_INTERNAL objOddsData);
+
+            [DllImport("IpatHelper.dll", CallingConvention = CallingConvention.Cdecl)]
+            internal static extern void ReleaseOddsData(ref ST_ODDS_DATA_INTERNAL objOddsData);
         }
         #endregion
 
@@ -492,6 +530,60 @@ namespace IpatHelper_DotNetSampleApl
         public static uint SetAutoDepositFlag(bool enable, uint depositValue = 1000, ushort confirmTimeout = 10000)
         {
             return NativeMethods.SetAutoDepositFlag(enable, depositValue, confirmTimeout);
+        }
+
+        /// <summary>
+        /// オッズ取得処理実行(中央競馬のみ)
+        /// </summary>
+        /// <param name="place">開催場</param>
+        /// <param name="raceNo">レース番号</param>
+        /// <param name="shikibetsu">式別</param>
+        /// <param name="oddsData">取得したオッズ情報</param>
+        /// <returns></returns>
+        public static uint GetOdds(Kaisai place, byte raceNo, Shikibetsu shikibetsu, out ST_ODDS_DATA oddsData)
+        {
+            ST_ODDS_DATA_INTERNAL tempOddsData = new()
+            {
+                place = 0,
+                raceNo = 0,
+                oddsTime = new byte[8],
+                detailCount = 0,
+                detailData = IntPtr.Zero
+            };
+
+            uint returnValue = NativeMethods.GetOdds((ushort)place, raceNo, (byte)shikibetsu, ref tempOddsData);
+
+            oddsData = new ST_ODDS_DATA()
+            {
+                place = tempOddsData.place,
+                raceNo = tempOddsData.raceNo,
+                oddsTime = tempOddsData.oddsTime != null
+                    ? Encoding.ASCII.GetString(tempOddsData.oddsTime).TrimEnd('\0')
+                    : string.Empty,
+                detailCount = tempOddsData.detailCount,
+                oddsDetail = Array.Empty<ST_ODDS_DETAIL>()
+            };
+
+            // 取得失敗、または明細が無い場合はここで解放して戻る
+            if ((returnValue & 1) != 1 || tempOddsData.detailCount <= 0 || tempOddsData.detailData == IntPtr.Zero)
+            {
+                NativeMethods.ReleaseOddsData(ref tempOddsData);
+                return returnValue;
+            }
+
+            // ネイティブ側で確保された明細配列をマネージド配列へ複製する
+            oddsData.oddsDetail = new ST_ODDS_DETAIL[tempOddsData.detailCount];
+            int detailSize = Marshal.SizeOf(typeof(ST_ODDS_DETAIL));
+            for (int i = 0; i < tempOddsData.detailCount; i++)
+            {
+                IntPtr elementPtr = IntPtr.Add(tempOddsData.detailData, i * detailSize);
+                oddsData.oddsDetail[i] = Marshal.PtrToStructure<ST_ODDS_DETAIL>(elementPtr);
+            }
+
+            // データの複製が終わったら、取得と同時にネイティブ側のメモリを解放する
+            NativeMethods.ReleaseOddsData(ref tempOddsData);
+
+            return returnValue;
         }
         #endregion
     }

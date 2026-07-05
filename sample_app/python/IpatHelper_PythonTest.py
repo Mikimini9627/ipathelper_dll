@@ -14,6 +14,15 @@ def main():
             print("ログインに失敗しました。")
             return
 
+        # オッズ取得(馬連・中央競馬のみ)。解放はラッパー内部で実施される
+        oddsData = ST_ODDS_DATA()
+        returnValue = get_odds(KAISAI_TOKYO, 11, SHIKIBETSU_QUINELLA, oddsData)
+        if (returnValue & 1) == 1:
+            print("オッズ更新時刻: " + oddsData.OddsTime + " / 明細数: " + str(oddsData.DetailCount))
+            for detail in oddsData.OddsDetail:
+                oddsText = "{:.1f}".format(detail.Odds / 10.0) if detail.Status == 0 else ("status=" + str(detail.Status))
+                print("  " + str(detail.Horse1) + "-" + str(detail.Horse2) + " : " + oddsText)
+
         # 馬券購入用のインスタンス取得
         betData = ST_BET_DATA()
         returnValue = get_bet_instance(KAISAI_NAKAYAMA, 11, 2020, 12, 27,

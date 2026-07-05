@@ -580,6 +580,78 @@ extern	"C" {
 	};
 
 	/// <summary>
+	/// オッズ明細(1点)
+	/// </summary>
+	struct ST_ODDS_DETAIL {
+
+		/// <summary>
+		/// 式別(SHIKIBETSU)
+		/// </summary>
+		unsigned char ucType;
+
+		/// <summary>
+		/// 馬番/枠番1
+		/// </summary>
+		unsigned char ucHorse1;
+
+		/// <summary>
+		/// 馬番/枠番2(単勝・複勝は0)
+		/// </summary>
+		unsigned char ucHorse2;
+
+		/// <summary>
+		/// 馬番3(三連複・三連単のみ、それ以外は0)
+		/// </summary>
+		unsigned char ucHorse3;
+
+		/// <summary>
+		/// 状態(0:通常 1:発売中止 2:オッズ未取得)
+		/// </summary>
+		unsigned char ucStatus;
+
+		/// <summary>
+		/// オッズ×10(複勝・ワイドは下限)。例:12.3倍→123
+		/// </summary>
+		unsigned int unOdds;
+
+		/// <summary>
+		/// 複勝・ワイドの上限オッズ×10(それ以外は0)
+		/// </summary>
+		unsigned int unOddsHigh;
+	};
+
+	/// <summary>
+	/// オッズ情報
+	/// </summary>
+	struct ST_ODDS_DATA {
+
+		/// <summary>
+		/// 開催場(入力値)
+		/// </summary>
+		unsigned short usPlace;
+
+		/// <summary>
+		/// レース番号
+		/// </summary>
+		unsigned char ucRaceNo;
+
+		/// <summary>
+		/// オッズ更新時刻 "HH:MM"
+		/// </summary>
+		char szOddsTime[8];
+
+		/// <summary>
+		/// 明細数
+		/// </summary>
+		unsigned int unDetailCount;
+
+		/// <summary>
+		/// オッズ明細配列
+		/// </summary>
+		ST_ODDS_DETAIL* pobjDetail;
+	};
+
+	/// <summary>
 	/// I-PATへログインします。
 	/// </summary>
 	/// <param name="szINetId">I-NET ID</param>
@@ -755,6 +827,32 @@ extern	"C" {
 		const bool bEnable,
 		const unsigned int unDepositValue = DEPOSIT_DEFAULT_VALUE,
 		const unsigned short usConfirmTimeout = DEFAULT_CONFIRM_TIMEOUT
+	);
+
+	/// <summary>
+	/// <para>指定レース・式別のオッズを取得します。</para>
+	/// <para>単勝・複勝は基本オッズ、枠連〜三連単は全通りのオッズ表を取得します。</para>
+	/// <para>中央競馬のみ対応です。使用後は必ずReleaseOddsDataで解放してください。</para>
+	/// </summary>
+	/// <param name="usPlace">開催場(KAISAI)</param>
+	/// <param name="ucRaceNo">レース番号</param>
+	/// <param name="ucShikibetsu">式別(SHIKIBETSU)</param>
+	/// <param name="pobjOdds">オッズ情報</param>
+	/// <returns></returns>
+	unsigned int GetOdds(
+		const unsigned short usPlace,
+		const unsigned char ucRaceNo,
+		const unsigned char ucShikibetsu,
+		ST_ODDS_DATA* pobjOdds
+	);
+
+	/// <summary>
+	/// <para>オッズ情報を解放します。</para>
+	/// <para>GetOddsの可否に依らず必ず実行してください。</para>
+	/// </summary>
+	/// <param name="pobjOdds">オッズ情報</param>
+	void ReleaseOddsData(
+		ST_ODDS_DATA* pobjOdds
 	);
 
 #ifdef __cplusplus

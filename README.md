@@ -36,7 +36,12 @@
 - `GetBetInstance` で購入情報を構築し、`Bet` で一括購入
 - WIN5専用の `GetBetInstanceWin5` / `BetWin5` にも対応
 - 購入方式: **通常 / フォーメーション / ボックス**
-- 式別: **単勝 / 複勝 / 枠連 / ワイド / 馬連 / 馬単 / 三連複 / 三連単** (すべて対応)
+- 式別: **単勝 / 複勝 / 枠連 / 馬連 / ワイド / 馬単 / 三連複 / 三連単** (すべて対応)
+
+### オッズ取得
+- `GetOdds` で指定レース・式別のオッズを取得（**中央競馬のみ**）
+- 単勝・複勝は基本オッズ、枠連〜三連単は全通りのオッズ表を取得
+- 取得後は必ず `ReleaseOddsData` でメモリを解放してください
 
 ---
 
@@ -90,6 +95,11 @@ unsigned int BetWin5(const ST_BET_DATA_WIN5 objBetData, const unsigned short usW
 // 自動入金フラグの設定
 unsigned int SetAutoDepositFlag(const bool bEnable, const unsigned int unDepositValue = 1000,
                                  const unsigned short usConfirmTimeout = 10000);
+
+// オッズ取得(中央競馬のみ)
+unsigned int GetOdds(const unsigned short usPlace, const unsigned char ucRaceNo,
+                     const unsigned char ucShikibetsu, ST_ODDS_DATA* pobjOdds);
+void         ReleaseOddsData(ST_ODDS_DATA* pobjOdds);
 ```
 
 戻り値は `RETURN_VALUE` 列挙体のビットフラグです。

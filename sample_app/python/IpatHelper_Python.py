@@ -50,6 +50,10 @@ SHIKIBETSU_EXACTA = 6
 SHIKIBETSU_TRIO	= 7
 SHIKIBETSU_TRIFECTA	= 8
 
+ODDS_STATUS_NORMAL = 0
+ODDS_STATUS_CANCEL = 1
+ODDS_STATUS_UNACQUIRED = 2
+
 DAYTYPE_TODAY = 1
 DAYTYPE_BEFORE = 2
 
@@ -110,6 +114,14 @@ class ST_PURCHASE_DATA:
         self.TicketCount = 0
         self.TicketData = []
 
+class ST_ODDS_DATA:
+    def __init__(self):
+        self.Place = 0
+        self.RaceNo = 0
+        self.OddsTime = ""
+        self.DetailCount = 0
+        self.OddsDetail = []
+
 #構造体マーシャリング用クラス
 class ST_TICKET_DATA_DETAIL(Structure):
     _fields_ = [("DecisionFlag", c_byte), ("BetFlag", c_byte), ("Kaisai", c_ushort), ("RaceNo", c_byte), \
@@ -130,6 +142,14 @@ class ST_BET_DATA(Structure):
 
 class ST_BET_DATA_WIN5(Structure):
     _fields_ = [("Kingaku", c_uint), ("Youbi", c_byte), ("Umaban", c_uint * 5)]
+
+class ST_ODDS_DETAIL(Structure):
+    _fields_ = [("Type", c_byte), ("Horse1", c_byte), ("Horse2", c_byte), ("Horse3", c_byte), \
+        ("Status", c_byte), ("Odds", c_uint), ("OddsHigh", c_uint)]
+
+class ST_ODDS_DATA_INTERNAL(Structure):
+    _fields_ = [("Place", c_ushort), ("RaceNo", c_byte), ("OddsTime", c_char * 8), \
+        ("DetailCount", c_uint), ("DetailData", c_void_p)]
 
 def init():
     '''
@@ -184,6 +204,12 @@ def init():
 
     lib.SetAutoDepositFlag.restype = c_uint
     lib.SetAutoDepositFlag.argtypes = [c_bool, c_ushort, c_ushort]
+
+    lib.GetOdds.restype = c_uint
+    lib.GetOdds.argtypes = [c_ushort, c_byte, c_byte, c_void_p]
+
+    lib.ReleaseOddsData.restype = None
+    lib.ReleaseOddsData.argtypes = [POINTER(ST_ODDS_DATA_INTERNAL)]
 
     if maxsize > 2 ** 32:
         windll.kernel32.FreeLibrary.argtypes = [wintypes.HMODULE]
@@ -359,3 +385,46 @@ def set_auto_deposit_flag(enable : bool, depositValue : int, confirmTimeout : in
     global lib
 
     return lib.SetAutoDepositFlag(enable, depositValue, confirmTimeout)
+
+def get_odds(place : int, raceNo : int, shikibetsu : int, oddsData : ST_ODDS_DATA) -> int:
+    '''
+        オッズ取得処理実行(中央競馬のみ)
+        単勝・複勝は基本オッズ、枠連〜三連単は全通りのオッズ表を取得する。
+        ネイティブ側で確保されたメモリは本関数内で解放する。
+    '''
+
+    global lib
+
+    # 内部的な構造体のインスタンスを生成する
+    tempOddsData = ST_ODDS_DATA_INTERNAL()
+
+    # オッズを取得する
+    returnValue = lib.GetOdds(place, raceNo, shikibetsu, byref(tempOddsData))
+
+    # 返却用のデータに値を設定
+    oddsData.Place = tempOddsData.Place
+    oddsData.RaceNo = tempOddsData.RaceNo
+    oddsData.OddsTime = tempOddsData.OddsTime.decode('ascii', errors='ignore')
+    oddsData.DetailCount = tempOddsData.DetailCount
+
+    # 取得失敗・明細なしはここで解放して戻る
+    if (returnValue & 1) != 1 or tempOddsData.DetailCount <= 0 or not tempOddsData.DetailData:
+        lib.ReleaseOddsData(byref(tempOddsData))
+        return returnValue
+
+    # オッズ明細(全て)を格納するためのバッファを確保(解放前に取り出す)
+    allDetailBytes = bytearray(string_at(tempOddsData.DetailData, \
+        sizeof(ST_ODDS_DETAIL) * tempOddsData.DetailCount))
+
+    for i in range(tempOddsData.DetailCount):
+        # 1つ分の構造体データを格納するバッファを確保して情報を格納する
+        oneDetailBytes = bytearray(sizeof(ST_ODDS_DETAIL))
+        for j in range(sizeof(ST_ODDS_DETAIL)):
+            oneDetailBytes[j] = allDetailBytes[j + i * sizeof(ST_ODDS_DETAIL)]
+
+        # オッズ明細(1個)をインスタンスに変換して追加する
+        oddsData.OddsDetail.append(ST_ODDS_DETAIL.from_buffer(oneDetailBytes, 0))
+
+    lib.ReleaseOddsData(byref(tempOddsData))
+
+    return returnValue
