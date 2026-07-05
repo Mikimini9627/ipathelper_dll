@@ -9,7 +9,7 @@
     ".NETCoreApp,Version=v10.0/win-x86": {
       "IpatHelper-TestApp/3.0.0.0": {
         "dependencies": {
-          "IpatHelperNet": "1.0.16",
+          "IpatHelperNet": "1.0.17",
           "runtimepack.Microsoft.NETCore.App.Runtime.win-x86": "10.0.9",
           "runtimepack.Microsoft.WindowsDesktop.App.Runtime.win-x86": "10.0.9"
         },
@@ -865,16 +865,16 @@
           }
         }
       },
-      "IpatHelperNet/1.0.16": {
+      "IpatHelperNet/1.0.17": {
         "runtime": {
           "lib/net10.0/IpatHelperNet.dll": {
-            "assemblyVersion": "1.0.16.0",
-            "fileVersion": "1.0.16.0"
+            "assemblyVersion": "1.0.17.0",
+            "fileVersion": "1.0.17.0"
           }
         },
         "native": {
           "runtimes/win-x86/native/IpatHelper.dll": {
-            "fileVersion": "3.0.0.9"
+            "fileVersion": "3.0.0.10"
           }
         }
       }
@@ -896,12 +896,12 @@
       "serviceable": false,
       "sha512": ""
     },
-    "IpatHelperNet/1.0.16": {
+    "IpatHelperNet/1.0.17": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-VlUE0fIZPuVFgWMRFJNr7cAmw9FneLlkP/E3Y5bgZX4FRhmK4Y7oiLNFteqS+m0DtKlCjPw8p9htIuWAB+f5Cw==",
-      "path": "ipathelpernet/1.0.16",
-      "hashPath": "ipathelpernet.1.0.16.nupkg.sha512"
+      "sha512": "sha512-d2/3eDG3VMnc2DzExgtGnIBA3+CZq9UX2kUYo6xww1sohAmGfaHDzKERM2GvvxysA8zV7AzCtwonEGmon5Zfig==",
+      "path": "ipathelpernet/1.0.17",
+      "hashPath": "ipathelpernet.1.0.17.nupkg.sha512"
     }
   },
   "runtimes": {
