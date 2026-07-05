@@ -1,9 +1,9 @@
-﻿#ifndef _IPAT_HELPER_H
-#define _IPAT_HELPER_H
+﻿#ifndef IPAT_HELPER_H
+#define IPAT_HELPER_H
 
-constexpr auto DEPOSIT_DEFAULT_VALUE		= 1000;	// 自動入金のデフォルト値(ms)
+constexpr auto DEPOSIT_DEFAULT_VALUE		= 1000;	// 自動入金のデフォルト値(円)
 constexpr auto DEFAULT_CONFIRM_TIMEOUT		= 10000;// 自動入金時のデフォルトタイムアウト(ms)
-constexpr auto DEFAULT_BET_TIMEOUT			= 500;	// 馬券購入間隔のデフォルト値
+constexpr auto DEFAULT_BET_TIMEOUT			= 500;	// 馬券購入間隔のデフォルト値(ms)
 constexpr auto DEFAULT_RETRY_COUNT			= 10;	// 入出金処理のデフォルトリトライ回数
 
 constexpr auto WIN5_RACE_COUNT				= 5;	// WIN5のレース数
@@ -237,7 +237,7 @@ extern	"C" {
 		/// <summary>
 		/// ドーヴィル
 		/// </summary>
-		DEAUVILE,
+		DEAUVILLE,
 
 		/// <summary>
 		/// チャーチルダウンズ
@@ -292,14 +292,14 @@ extern	"C" {
 		BRACKETQUINELLA,
 
 		/// <summary>
-		/// ワイド
-		/// </summary>
-		QUINELLAPLACE,
-
-		/// <summary>
 		/// 馬連
 		/// </summary>
 		QUINELLA,
+
+		/// <summary>
+		/// ワイド
+		/// </summary>
+		QUINELLAPLACE,
 
 		/// <summary>
 		/// 馬単
@@ -602,10 +602,13 @@ extern	"C" {
 	);
 
 	/// <summary>
-	/// 登録口座から入金します。
+	/// <para>登録口座から入金します。</para>
+	/// <para>入金指示の完了後、入金額が残高へ加算されたことを確認できるまで待機し、
+	/// 反映を確認できた場合のみ成功を返します。</para>
+	/// <para>SetAutoDepositFlagのusConfirmTimeout(既定10000ms)以内に反映されない場合は失敗を返します。</para>
 	/// </summary>
 	/// <param name="unDepositValue">入金額</param>
-	/// <param name="usRetryCount">リトライ回数</param>
+	/// <param name="usRetryCount">リトライ回数(入金指示まで。反映待機はリトライしません)</param>
 	/// <returns></returns>
 	unsigned int Deposit(
 		const unsigned int unDepositValue,
@@ -613,9 +616,12 @@ extern	"C" {
 	);
 
 	/// <summary>
-	/// 登録口座へ出金します。
+	/// <para>登録口座へ全額出金します。</para>
+	/// <para>出金指示の完了後、残高が0になったことを確認できるまで待機し、
+	/// 反映を確認できた場合のみ成功を返します。</para>
+	/// <para>SetAutoDepositFlagのusConfirmTimeout(既定10000ms)以内に反映されない場合は失敗を返します。</para>
 	/// </summary>
-	/// <param name="usRetryCount">リトライ回数</param>
+	/// <param name="usRetryCount">リトライ回数(出金指示まで。反映待機はリトライしません)</param>
 	/// <returns></returns>
 	unsigned int Withdraw(
 		const unsigned short usRetryCount = DEFAULT_RETRY_COUNT
@@ -690,16 +696,16 @@ extern	"C" {
 	/// <para>馬券を購入します。</para>
 	/// <para>GetBetInstanceで取得した構造体の配列を指定することで一括で購入することが可能です。</para>
 	/// <para>配列の要素ごとに購入を行いますが、間隔が短い場合購入に失敗する可能性があります。</para>
-	/// <para>ネットワーク環境によって間隔は異なりますが、usWaitMilliSecondsに任意の数値を指定することで調整が可能です。</para>
+	/// <para>ネットワーク環境によって間隔は異なりますが、usWaitMillisecondsに任意の数値を指定することで調整が可能です。</para>
 	/// </summary>
 	/// <param name="pobjBetData">馬券購入情報(配列)</param>
 	/// <param name="usBetCount">配列数</param>
-	/// <param name="usWaitMilliSeconds">馬券購入間隔(ms)</param>
+	/// <param name="usWaitMilliseconds">馬券購入間隔(ms)</param>
 	/// <returns></returns>
 	unsigned int Bet(
 		const ST_BET_DATA pobjBetData[],
 		const unsigned short usBetCount,
-		const unsigned short usWaitMilliSeconds = DEFAULT_BET_TIMEOUT
+		const unsigned short usWaitMilliseconds = DEFAULT_BET_TIMEOUT
 	);
 
 	/// <summary>
@@ -725,24 +731,25 @@ extern	"C" {
 	/// <para>馬券(WIN5)を購入します。</para>
 	/// <para>GetBetInstanceWin5で取得した構造体を指定することで一括で購入することが可能です。</para>
 	/// <para>組み合わせごとに購入を行いますが、間隔が短い場合購入に失敗する可能性があります。</para>
-	/// <para>ネットワーク環境によって間隔は異なりますが、usWaitMilliSecondsに任意の数値を指定することで調整が可能です。</para>
+	/// <para>ネットワーク環境によって間隔は異なりますが、usWaitMillisecondsに任意の数値を指定することで調整が可能です。</para>
 	/// </summary>
 	/// <param name="objBetData">馬券購入情報(WIN5)</param>
-	/// <param name="usWaitMilliSeconds">馬券購入間隔</param>
+	/// <param name="usWaitMilliseconds">馬券購入間隔</param>
 	/// <returns></returns>
 	unsigned int BetWin5(
 		const ST_BET_DATA_WIN5 objBetData,
-		const unsigned short usWaitMilliSeconds = DEFAULT_BET_TIMEOUT
+		const unsigned short usWaitMilliseconds = DEFAULT_BET_TIMEOUT
 	);
 
 	/// <summary>
 	/// <para>自動入金設定を行います。</para>
-	/// <para>入金が完了したかどうかをusConfirmTimeout(ms)後に再度確認します。</para>
-	/// <para>購入するのに十分な入金がされている場合のみ購入に移ります。</para>
+	/// <para>購入時に残高が不足している場合、自動で入金してから購入に移ります。</para>
+	/// <para>usConfirmTimeoutは残高反映待機のタイムアウト(ms)で、
+	/// Deposit/Withdrawの反映待機にも使用されます。</para>
 	/// </summary>
 	/// <param name="bEnable">有効にするかどうか</param>
 	/// <param name="unDepositValue">自動入金額</param>
-	/// <param name="usConfirmTimeout">確認タイムアウト</param>
+	/// <param name="usConfirmTimeout">残高反映の確認タイムアウト(ms)</param>
 	/// <returns></returns>
 	unsigned int SetAutoDepositFlag(
 		const bool bEnable,

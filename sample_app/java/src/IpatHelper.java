@@ -80,8 +80,8 @@ public class IpatHelper {
 		public static final int SHIKIBETSU_WIN = 1;
 		public static final int SHIKIBETSU_PLACE = 2;
 		public static final int SHIKIBETSU_BRACKETQUINELLA = 3;
-		public static final int SHIKIBETSU_QUINELLAPLACE = 4;
-		public static final int SHIKIBETSU_QUINELLA = 5;
+		public static final int SHIKIBETSU_QUINELLA = 4;
+		public static final int SHIKIBETSU_QUINELLAPLACE = 5;
 		public static final int SHIKIBETSU_EXACTA = 6;
 		public static final int SHIKIBETSU_TRIO = 7;
 		public static final int SHIKIBETSU_TRIFECTA = 8;

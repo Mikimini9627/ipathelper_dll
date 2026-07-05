@@ -144,8 +144,8 @@ namespace IpatHelper_DotNetSampleApl
             WIN = 1,
             PLACE,
             BRACKETQUINELLA,
-            QUINELLAPLACE,
             QUINELLA,
+            QUINELLAPLACE,
             EXACTA,
             TRIO,
             TRIFECTA
