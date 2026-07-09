@@ -122,6 +122,14 @@ class ST_ODDS_DATA:
         self.DetailCount = 0
         self.OddsDetail = []
 
+class ST_RACECARD_DATA:
+    def __init__(self):
+        self.Place = 0
+        self.RaceNo = 0
+        self.OddsTime = ""
+        self.EntryCount = 0
+        self.EntryData = []
+
 #構造体マーシャリング用クラス
 class ST_TICKET_DATA_DETAIL(Structure):
     _fields_ = [("DecisionFlag", c_byte), ("BetFlag", c_byte), ("Kaisai", c_ushort), ("RaceNo", c_byte), \
@@ -150,6 +158,21 @@ class ST_ODDS_DETAIL(Structure):
 class ST_ODDS_DATA_INTERNAL(Structure):
     _fields_ = [("Place", c_ushort), ("RaceNo", c_byte), ("OddsTime", c_char * 8), \
         ("DetailCount", c_uint), ("DetailData", c_void_p)]
+
+class ST_ENTRY_DETAIL(Structure):
+    # 文字列フィールド(HorseName/Sex/JockeyName/TrainerName)はUTF-8のbytes。
+    # 利用時は .decode('utf-8') で文字列化する。
+    _fields_ = [("Wakuban", c_byte), ("Umaban", c_byte), \
+        ("HorseName", c_char * 64), ("Sex", c_char * 8), ("Age", c_byte), \
+        ("WeightStatus", c_byte), ("Weight", c_ushort), \
+        ("WeightDiffCode", c_byte), ("WeightDiff", c_ushort), ("Apprentice", c_byte), \
+        ("JockeyName", c_char * 48), ("Burden", c_ushort), ("TrainerName", c_char * 48), \
+        ("WinPopular", c_ushort), ("WinOddsStatus", c_byte), ("WinOdds", c_uint), \
+        ("PlaceOddsStatus", c_byte), ("PlaceOddsLow", c_uint), ("PlaceOddsHigh", c_uint)]
+
+class ST_RACECARD_DATA_INTERNAL(Structure):
+    _fields_ = [("Place", c_ushort), ("RaceNo", c_byte), ("OddsTime", c_char * 8), \
+        ("EntryCount", c_uint), ("EntryData", c_void_p)]
 
 def init():
     '''
@@ -210,6 +233,12 @@ def init():
 
     lib.ReleaseOddsData.restype = None
     lib.ReleaseOddsData.argtypes = [POINTER(ST_ODDS_DATA_INTERNAL)]
+
+    lib.GetRaceCard.restype = c_uint
+    lib.GetRaceCard.argtypes = [c_ushort, c_byte, c_void_p]
+
+    lib.ReleaseRaceCardData.restype = None
+    lib.ReleaseRaceCardData.argtypes = [POINTER(ST_RACECARD_DATA_INTERNAL)]
 
     if maxsize > 2 ** 32:
         windll.kernel32.FreeLibrary.argtypes = [wintypes.HMODULE]
@@ -388,7 +417,7 @@ def set_auto_deposit_flag(enable : bool, depositValue : int, confirmTimeout : in
 
 def get_odds(place : int, raceNo : int, shikibetsu : int, oddsData : ST_ODDS_DATA) -> int:
     '''
-        オッズ取得処理実行(中央競馬のみ)
+        オッズ取得処理実行(中央競馬・地方競馬に対応)
         単勝・複勝は基本オッズ、枠連〜三連単は全通りのオッズ表を取得する。
         ネイティブ側で確保されたメモリは本関数内で解放する。
     '''
@@ -426,5 +455,51 @@ def get_odds(place : int, raceNo : int, shikibetsu : int, oddsData : ST_ODDS_DAT
         oddsData.OddsDetail.append(ST_ODDS_DETAIL.from_buffer(oneDetailBytes, 0))
 
     lib.ReleaseOddsData(byref(tempOddsData))
+
+    return returnValue
+
+def get_race_card(place : int, raceNo : int, raceCard : ST_RACECARD_DATA) -> int:
+    '''
+        出馬表取得処理実行(中央競馬・地方競馬に対応)
+        各出走馬の枠番・馬番・馬名・性齢・馬体重・騎手・斤量・調教師・
+        単勝人気・単勝/複勝オッズを取得する。
+        ネイティブ側で確保されたメモリは本関数内で解放する。
+        EntryData の各要素は ST_ENTRY_DETAIL で、馬名等の文字列フィールドは
+        UTF-8 の bytes のため利用時に .decode('utf-8') する。
+    '''
+
+    global lib
+
+    # 内部的な構造体のインスタンスを生成する
+    tempRaceCardData = ST_RACECARD_DATA_INTERNAL()
+
+    # 出馬表を取得する
+    returnValue = lib.GetRaceCard(place, raceNo, byref(tempRaceCardData))
+
+    # 返却用のデータに値を設定
+    raceCard.Place = tempRaceCardData.Place
+    raceCard.RaceNo = tempRaceCardData.RaceNo
+    raceCard.OddsTime = tempRaceCardData.OddsTime.decode('ascii', errors='ignore')
+    raceCard.EntryCount = tempRaceCardData.EntryCount
+
+    # 取得失敗・明細なしはここで解放して戻る
+    if (returnValue & 1) != 1 or tempRaceCardData.EntryCount <= 0 or not tempRaceCardData.EntryData:
+        lib.ReleaseRaceCardData(byref(tempRaceCardData))
+        return returnValue
+
+    # 出走馬明細(全て)を格納するためのバッファを確保(解放前に取り出す)
+    allEntryBytes = bytearray(string_at(tempRaceCardData.EntryData, \
+        sizeof(ST_ENTRY_DETAIL) * tempRaceCardData.EntryCount))
+
+    for i in range(tempRaceCardData.EntryCount):
+        # 1つ分の構造体データを格納するバッファを確保して情報を格納する
+        oneEntryBytes = bytearray(sizeof(ST_ENTRY_DETAIL))
+        for j in range(sizeof(ST_ENTRY_DETAIL)):
+            oneEntryBytes[j] = allEntryBytes[j + i * sizeof(ST_ENTRY_DETAIL)]
+
+        # 出走馬明細(1個)をインスタンスに変換して追加する
+        raceCard.EntryData.append(ST_ENTRY_DETAIL.from_buffer(oneEntryBytes, 0))
+
+    lib.ReleaseRaceCardData(byref(tempRaceCardData))
 
     return returnValue

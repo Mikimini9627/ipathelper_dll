@@ -127,6 +127,77 @@ namespace IpatHelper_DotNetSampleApl
             public uint detailCount;
             public ST_ODDS_DETAIL[] oddsDetail;
         };
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct ST_ENTRY_DETAIL_INTERNAL
+        {
+            public byte ucWakuban;
+            public byte ucUmaban;
+            [MarshalAs(UnmanagedType.ByValArray, SizeConst = 64)]
+            public byte[] szHorseName;
+            [MarshalAs(UnmanagedType.ByValArray, SizeConst = 8)]
+            public byte[] szSex;
+            public byte ucAge;
+            public byte ucWeightStatus;
+            public ushort usWeight;
+            public byte ucWeightDiffCode;
+            public ushort usWeightDiff;
+            public byte ucApprentice;
+            [MarshalAs(UnmanagedType.ByValArray, SizeConst = 48)]
+            public byte[] szJockeyName;
+            public ushort usBurden;
+            [MarshalAs(UnmanagedType.ByValArray, SizeConst = 48)]
+            public byte[] szTrainerName;
+            public ushort usWinPopular;
+            public byte ucWinOddsStatus;
+            public uint unWinOdds;
+            public byte ucPlaceOddsStatus;
+            public uint unPlaceOddsLow;
+            public uint unPlaceOddsHigh;
+        }
+
+        public struct ST_ENTRY_DETAIL
+        {
+            public byte wakuban;            // 枠番
+            public byte umaban;             // 馬番
+            public string horseName;        // 馬名
+            public string sex;              // 性別
+            public byte age;                // 年齢
+            public byte weightStatus;       // 0:通常 1:未発表 2:出走取消 3:計量不能
+            public ushort weight;           // 馬体重(kg)
+            public byte weightDiffCode;     // 増減符号(0:なし 1:増 2:減 3:増減なし 7:初出走 8:前計不)
+            public ushort weightDiff;       // 増減量(kg)
+            public byte apprentice;         // 見習騎手コード
+            public string jockeyName;       // 騎手名
+            public ushort burden;           // 斤量×10
+            public string trainerName;      // 調教師名
+            public ushort winPopular;       // 単勝人気
+            public byte winOddsStatus;      // 0:通常 1:発売中止 2:未取得
+            public uint winOdds;            // 単勝オッズ×10
+            public byte placeOddsStatus;    // 0:通常 1:発売中止 2:未取得
+            public uint placeOddsLow;       // 複勝オッズ下限×10
+            public uint placeOddsHigh;      // 複勝オッズ上限×10
+        };
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct ST_RACECARD_DATA_INTERNAL
+        {
+            public ushort usPlace;
+            public byte ucRaceNo;
+            [MarshalAs(UnmanagedType.ByValArray, SizeConst = 8)]
+            public byte[] szOddsTime;
+            public uint unEntryCount;
+            public IntPtr pobjEntry;
+        }
+
+        public struct ST_RACECARD_DATA
+        {
+            public ushort place;
+            public byte raceNo;
+            public string oddsTime;
+            public uint entryCount;
+            public ST_ENTRY_DETAIL[] entries;
+        };
         #endregion
 
         #region 列挙体
@@ -288,6 +359,12 @@ namespace IpatHelper_DotNetSampleApl
 
             [DllImport("IpatHelper.dll", CallingConvention = CallingConvention.Cdecl)]
             internal static extern void ReleaseOddsData(ref ST_ODDS_DATA_INTERNAL objOddsData);
+
+            [DllImport("IpatHelper.dll", CallingConvention = CallingConvention.Cdecl)]
+            internal static extern uint GetRaceCard(ushort usPlace, byte byRaceNo, ref ST_RACECARD_DATA_INTERNAL objRaceCardData);
+
+            [DllImport("IpatHelper.dll", CallingConvention = CallingConvention.Cdecl)]
+            internal static extern void ReleaseRaceCardData(ref ST_RACECARD_DATA_INTERNAL objRaceCardData);
         }
         #endregion
 
@@ -533,7 +610,7 @@ namespace IpatHelper_DotNetSampleApl
         }
 
         /// <summary>
-        /// オッズ取得処理実行(中央競馬のみ)
+        /// オッズ取得処理実行(中央競馬・地方競馬に対応)
         /// </summary>
         /// <param name="place">開催場</param>
         /// <param name="raceNo">レース番号</param>
@@ -584,6 +661,98 @@ namespace IpatHelper_DotNetSampleApl
             NativeMethods.ReleaseOddsData(ref tempOddsData);
 
             return returnValue;
+        }
+
+        /// <summary>
+        /// 出馬表取得処理実行(中央競馬・地方競馬に対応)
+        /// </summary>
+        /// <param name="place">開催場</param>
+        /// <param name="raceNo">レース番号</param>
+        /// <param name="raceCard">取得した出馬表情報</param>
+        /// <returns></returns>
+        public static uint GetRaceCard(Kaisai place, byte raceNo, out ST_RACECARD_DATA raceCard)
+        {
+            ST_RACECARD_DATA_INTERNAL tempRaceCardData = new()
+            {
+                usPlace = 0,
+                ucRaceNo = 0,
+                szOddsTime = new byte[8],
+                unEntryCount = 0,
+                pobjEntry = IntPtr.Zero
+            };
+
+            uint returnValue = NativeMethods.GetRaceCard((ushort)place, raceNo, ref tempRaceCardData);
+
+            raceCard = new ST_RACECARD_DATA()
+            {
+                place = tempRaceCardData.usPlace,
+                raceNo = tempRaceCardData.ucRaceNo,
+                oddsTime = DecodeUtf8(tempRaceCardData.szOddsTime),
+                entryCount = tempRaceCardData.unEntryCount,
+                entries = Array.Empty<ST_ENTRY_DETAIL>()
+            };
+
+            // 取得失敗、または明細が無い場合はここで解放して戻る
+            if ((returnValue & 1) != 1 || tempRaceCardData.unEntryCount <= 0 || tempRaceCardData.pobjEntry == IntPtr.Zero)
+            {
+                NativeMethods.ReleaseRaceCardData(ref tempRaceCardData);
+                return returnValue;
+            }
+
+            // ネイティブ側で確保された明細配列をマネージド配列へ複製する
+            raceCard.entries = new ST_ENTRY_DETAIL[tempRaceCardData.unEntryCount];
+            int entrySize = Marshal.SizeOf(typeof(ST_ENTRY_DETAIL_INTERNAL));
+            for (int i = 0; i < tempRaceCardData.unEntryCount; i++)
+            {
+                IntPtr elementPtr = IntPtr.Add(tempRaceCardData.pobjEntry, i * entrySize);
+                ST_ENTRY_DETAIL_INTERNAL e = Marshal.PtrToStructure<ST_ENTRY_DETAIL_INTERNAL>(elementPtr);
+
+                raceCard.entries[i] = new ST_ENTRY_DETAIL()
+                {
+                    wakuban = e.ucWakuban,
+                    umaban = e.ucUmaban,
+                    horseName = DecodeUtf8(e.szHorseName),
+                    sex = DecodeUtf8(e.szSex),
+                    age = e.ucAge,
+                    weightStatus = e.ucWeightStatus,
+                    weight = e.usWeight,
+                    weightDiffCode = e.ucWeightDiffCode,
+                    weightDiff = e.usWeightDiff,
+                    apprentice = e.ucApprentice,
+                    jockeyName = DecodeUtf8(e.szJockeyName),
+                    burden = e.usBurden,
+                    trainerName = DecodeUtf8(e.szTrainerName),
+                    winPopular = e.usWinPopular,
+                    winOddsStatus = e.ucWinOddsStatus,
+                    winOdds = e.unWinOdds,
+                    placeOddsStatus = e.ucPlaceOddsStatus,
+                    placeOddsLow = e.unPlaceOddsLow,
+                    placeOddsHigh = e.unPlaceOddsHigh
+                };
+            }
+
+            NativeMethods.ReleaseRaceCardData(ref tempRaceCardData);
+
+            return returnValue;
+        }
+
+        /// <summary>
+        /// DLLが返すUTF-8・null終端のバイト列を文字列へデコードする
+        /// </summary>
+        private static string DecodeUtf8(byte[] raw)
+        {
+            if (raw == null)
+            {
+                return string.Empty;
+            }
+
+            int length = Array.IndexOf(raw, (byte)0);
+            if (length < 0)
+            {
+                length = raw.Length;
+            }
+
+            return length == 0 ? string.Empty : Encoding.UTF8.GetString(raw, 0, length);
         }
         #endregion
     }

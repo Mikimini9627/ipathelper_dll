@@ -14,7 +14,7 @@ def main():
             print("ログインに失敗しました。")
             return
 
-        # オッズ取得(馬連・中央競馬のみ)。解放はラッパー内部で実施される
+        # オッズ取得(馬連・中央競馬/地方競馬に対応)。解放はラッパー内部で実施される
         oddsData = ST_ODDS_DATA()
         returnValue = get_odds(KAISAI_TOKYO, 11, SHIKIBETSU_QUINELLA, oddsData)
         if (returnValue & 1) == 1:
@@ -22,6 +22,19 @@ def main():
             for detail in oddsData.OddsDetail:
                 oddsText = "{:.1f}".format(detail.Odds / 10.0) if detail.Status == 0 else ("status=" + str(detail.Status))
                 print("  " + str(detail.Horse1) + "-" + str(detail.Horse2) + " : " + oddsText)
+
+        # 出馬表取得(中央競馬/地方競馬に対応)。解放はラッパー内部で実施される
+        raceCard = ST_RACECARD_DATA()
+        returnValue = get_race_card(KAISAI_TOKYO, 11, raceCard)
+        if (returnValue & 1) == 1:
+            print("オッズ更新時刻: " + raceCard.OddsTime + " / 出走頭数: " + str(raceCard.EntryCount))
+            for entry in raceCard.EntryData:
+                name = entry.HorseName.decode('utf-8')
+                sex = entry.Sex.decode('utf-8')
+                jockey = entry.JockeyName.decode('utf-8')
+                win = "{:.1f}".format(entry.WinOdds / 10.0) if entry.WinOddsStatus == 0 else "-"
+                print("  {:2d}番 {} {}{} 斤量{:.1f} 騎手:{} 単勝:{} 人気:{}".format(
+                    entry.Umaban, name, sex, entry.Age, entry.Burden / 10.0, jockey, win, entry.WinPopular))
 
         # 馬券購入用のインスタンス取得
         betData = ST_BET_DATA()

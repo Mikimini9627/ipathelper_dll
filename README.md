@@ -39,9 +39,14 @@
 - 式別: **単勝 / 複勝 / 枠連 / 馬連 / ワイド / 馬単 / 三連複 / 三連単** (すべて対応)
 
 ### オッズ取得
-- `GetOdds` で指定レース・式別のオッズを取得（**中央競馬のみ**）
+- `GetOdds` で指定レース・式別のオッズを取得（**中央競馬・地方競馬に対応**）
 - 単勝・複勝は基本オッズ、枠連〜三連単は全通りのオッズ表を取得
 - 取得後は必ず `ReleaseOddsData` でメモリを解放してください
+
+### 出馬表取得
+- `GetRaceCard` で指定レースの出馬表（出走馬一覧）を取得（**中央競馬・地方競馬に対応**）
+- 枠番・馬番・馬名・性齢・馬体重・騎手・斤量・調教師・単勝人気・単勝/複勝オッズを取得
+- 文字列は UTF-8。取得後は必ず `ReleaseRaceCardData` でメモリを解放してください
 
 ---
 
@@ -96,10 +101,15 @@ unsigned int BetWin5(const ST_BET_DATA_WIN5 objBetData, const unsigned short usW
 unsigned int SetAutoDepositFlag(const bool bEnable, const unsigned int unDepositValue = 1000,
                                  const unsigned short usConfirmTimeout = 10000);
 
-// オッズ取得(中央競馬のみ)
+// オッズ取得(中央競馬・地方競馬に対応)
 unsigned int GetOdds(const unsigned short usPlace, const unsigned char ucRaceNo,
                      const unsigned char ucShikibetsu, ST_ODDS_DATA* pobjOdds);
 void         ReleaseOddsData(ST_ODDS_DATA* pobjOdds);
+
+// 出馬表取得(中央競馬・地方競馬に対応)
+unsigned int GetRaceCard(const unsigned short usPlace, const unsigned char ucRaceNo,
+                         ST_RACECARD_DATA* pobjRaceCard);
+void         ReleaseRaceCardData(ST_RACECARD_DATA* pobjRaceCard);
 ```
 
 戻り値は `RETURN_VALUE` 列挙体のビットフラグです。

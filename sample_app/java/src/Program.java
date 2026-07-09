@@ -14,7 +14,7 @@ public class Program {
 			return;
 		}
 
-		//オッズ取得(馬連・中央競馬のみ)。解放はラッパー内部で実施される
+		//オッズ取得(馬連・中央競馬/地方競馬に対応)。解放はラッパー内部で実施される
 		IpatHelper.ST_ODDS_DATA oddsData = new IpatHelper.ST_ODDS_DATA();
 		returnValue = iPatHelper.GetOdds(IpatHelper.Kaisai.KAISAI_TOKYO, 11, IpatHelper.Shikibetsu.SHIKIBETSU_QUINELLA, oddsData);
 		if((returnValue & 1) == 1) {
@@ -22,6 +22,21 @@ public class Program {
 			for (IpatHelper.ST_ODDS_DETAIL detail : oddsData.oddsDetail) {
 				String oddsText = (detail.status == 0) ? String.format("%.1f", detail.odds / 10.0) : ("status=" + detail.status);
 				System.out.println("  " + detail.horse1 + "-" + detail.horse2 + " : " + oddsText);
+			}
+		}
+
+		//出馬表取得(中央競馬/地方競馬に対応)。解放はラッパー内部で実施される
+		IpatHelper.ST_RACECARD_DATA raceCard = new IpatHelper.ST_RACECARD_DATA();
+		returnValue = iPatHelper.GetRaceCard(IpatHelper.Kaisai.KAISAI_TOKYO, 11, raceCard);
+		if((returnValue & 1) == 1) {
+			System.out.println("オッズ更新時刻: " + raceCard.oddsTime + " / 出走頭数: " + raceCard.entryCount);
+			for (IpatHelper.ST_ENTRY_DETAIL entry : raceCard.entries) {
+				String name = IpatHelper.Utf8ToString(entry.horseName);
+				String sex = IpatHelper.Utf8ToString(entry.sex);
+				String jockey = IpatHelper.Utf8ToString(entry.jockeyName);
+				String win = (entry.winOddsStatus == 0) ? String.format("%.1f", entry.winOdds / 10.0) : "-";
+				System.out.println(String.format("  %2d番 %s %s%d 斤量%.1f 騎手:%s 単勝:%s 人気:%d",
+						entry.umaban, name, sex, entry.age, entry.burden / 10.0, jockey, win, entry.winPopular));
 			}
 		}
 

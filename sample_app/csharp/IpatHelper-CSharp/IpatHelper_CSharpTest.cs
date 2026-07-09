@@ -14,7 +14,7 @@ namespace IpatHelper_DotNetSampleApl
                 return;
             }
 
-            //オッズ取得(馬連・中央競馬のみ)。解放はラッパー内部で実施される
+            //オッズ取得(馬連・中央競馬/地方競馬に対応)。解放はラッパー内部で実施される
             returnValue = IpatHelper.GetOdds(IpatHelper.Kaisai.TOKYO, 11, IpatHelper.Shikibetsu.QUINELLA, out IpatHelper.ST_ODDS_DATA oddsData);
             if ((returnValue & 1) == 1)
             {
@@ -23,6 +23,20 @@ namespace IpatHelper_DotNetSampleApl
                 {
                     string oddsText = detail.status == 0 ? (detail.odds / 10.0).ToString("0.0") : $"status={detail.status}";
                     Console.WriteLine($"  {detail.horse1}-{detail.horse2} : {oddsText}");
+                }
+            }
+
+            //出馬表取得(中央競馬/地方競馬に対応)。解放はラッパー内部で実施される
+            returnValue = IpatHelper.GetRaceCard(IpatHelper.Kaisai.TOKYO, 11, out IpatHelper.ST_RACECARD_DATA raceCard);
+            if ((returnValue & 1) == 1)
+            {
+                Console.WriteLine($"Odds Time: {raceCard.oddsTime} / Entries: {raceCard.entryCount}");
+                foreach (var entry in raceCard.entries)
+                {
+                    string winText = entry.winOddsStatus == 0 ? (entry.winOdds / 10.0).ToString("0.0") : "-";
+                    Console.WriteLine($"  {entry.umaban,2} {entry.horseName} {entry.sex}{entry.age} " +
+                                      $"burden={entry.burden / 10.0:0.0} jockey={entry.jockeyName} " +
+                                      $"win={winText} popular={entry.winPopular}");
                 }
             }
 

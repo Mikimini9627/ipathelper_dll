@@ -15,7 +15,7 @@ int main()
 		return 1;
 	}
 
-	// オッズ取得(馬連・中央競馬のみ)。取得後は必ず ReleaseOddsData で解放する
+	// オッズ取得(馬連・中央競馬/地方競馬に対応)。取得後は必ず ReleaseOddsData で解放する
 	ST_ODDS_DATA objOdds = { 0 };
 	unReturn = GetOdds((unsigned short)KAISAI::TOKYO, 11, (unsigned char)SHIKIBETSU::QUINELLA, &objOdds);
 	if ((unReturn & 1) == 1) {
@@ -32,6 +32,30 @@ int main()
 		}
 	}
 	ReleaseOddsData(&objOdds);
+
+	// 出馬表取得(中央競馬/地方競馬に対応)。取得後は必ず ReleaseRaceCardData で解放する
+	// 文字列(szHorseName等)はUTF-8。コンソール表示時は環境の文字コードに注意する
+	ST_RACECARD_DATA objRaceCard = { 0 };
+	unReturn = GetRaceCard((unsigned short)KAISAI::TOKYO, 11, &objRaceCard);
+	if ((unReturn & 1) == 1) {
+		cout << "Odds Time: " << objRaceCard.szOddsTime << " / Entries: " << objRaceCard.unEntryCount << endl;
+		for (unsigned int i = 0; i < objRaceCard.unEntryCount; i++) {
+			const ST_ENTRY_DETAIL& entry = objRaceCard.pobjEntry[i];
+			cout << "  " << (int)entry.ucUmaban << " " << entry.szHorseName
+				<< " " << entry.szSex << (int)entry.ucAge
+				<< " burden=" << (entry.usBurden / 10.0)
+				<< " jockey=" << entry.szJockeyName
+				<< " win=";
+			if (entry.ucWinOddsStatus == 0) {
+				cout << (entry.unWinOdds / 10.0); // 実際の倍率 = unWinOdds / 10.0
+			}
+			else {
+				cout << "-"; // 1:発売中止 2:未取得
+			}
+			cout << " popular=" << (int)entry.usWinPopular << endl;
+		}
+	}
+	ReleaseRaceCardData(&objRaceCard);
 
 	// 馬券購入用のインスタンス取得
 	ST_BET_DATA objBetData = { 0 };

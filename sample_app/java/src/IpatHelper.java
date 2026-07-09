@@ -32,6 +32,8 @@ public class IpatHelper {
 		public int BetWin5(ST_BET_DATA_WIN5 betData, short waitMilliSeconds);
 		public int GetOdds(short place, byte raceNo, byte shikibetsu, ST_ODDS_DATA_INTERNAL oddsData);
 		public void ReleaseOddsData(ST_ODDS_DATA_INTERNAL.ByReference oddsData);
+		public int GetRaceCard(short place, byte raceNo, ST_RACECARD_DATA_INTERNAL raceCardData);
+		public void ReleaseRaceCardData(ST_RACECARD_DATA_INTERNAL.ByReference raceCardData);
 	}
 
 	//開催
@@ -482,6 +484,125 @@ public class IpatHelper {
 		}
 	}
 
+	// 出走馬明細
+	public static class ST_ENTRY_DETAIL extends Structure {
+
+		@Override
+        protected List<String> getFieldOrder() {
+            return Arrays.asList("wakuban", "umaban", "horseName", "sex", "age",
+            		"weightStatus", "weight", "weightDiffCode", "weightDiff", "apprentice",
+            		"jockeyName", "burden", "trainerName", "winPopular", "winOddsStatus", "winOdds",
+            		"placeOddsStatus", "placeOddsLow", "placeOddsHigh");
+        }
+
+		public byte wakuban;         // 枠番
+		public byte umaban;          // 馬番
+		public byte[] horseName;     // 馬名(UTF-8)
+		public byte[] sex;           // 性別(UTF-8)
+		public byte age;             // 年齢
+		public byte weightStatus;    // 0:通常 1:未発表 2:出走取消 3:計量不能
+		public short weight;         // 馬体重(kg)
+		public byte weightDiffCode;  // 増減符号(0:なし 1:増 2:減 3:増減なし 7:初出走 8:前計不)
+		public short weightDiff;     // 増減量(kg)
+		public byte apprentice;      // 見習騎手コード
+		public byte[] jockeyName;    // 騎手名(UTF-8)
+		public short burden;         // 斤量×10
+		public byte[] trainerName;   // 調教師名(UTF-8)
+		public short winPopular;     // 単勝人気
+		public byte winOddsStatus;   // 0:通常 1:発売中止 2:未取得
+		public int winOdds;          // 単勝オッズ×10
+		public byte placeOddsStatus; // 0:通常 1:発売中止 2:未取得
+		public int placeOddsLow;     // 複勝オッズ下限×10
+		public int placeOddsHigh;    // 複勝オッズ上限×10
+
+		public ST_ENTRY_DETAIL() {
+			wakuban = 0;
+			umaban = 0;
+			horseName = new byte[64];
+			sex = new byte[8];
+			age = 0;
+			weightStatus = 0;
+			weight = 0;
+			weightDiffCode = 0;
+			weightDiff = 0;
+			apprentice = 0;
+			jockeyName = new byte[48];
+			burden = 0;
+			trainerName = new byte[48];
+			winPopular = 0;
+			winOddsStatus = 0;
+			winOdds = 0;
+			placeOddsStatus = 0;
+			placeOddsLow = 0;
+			placeOddsHigh = 0;
+		}
+
+		public static int GetSize(){
+			return 204;
+		}
+	};
+
+	// 出走馬明細リスト(内部使用)
+	public static class ST_ENTRY_DETAIL_LIST_INTERNAL extends Structure {
+
+		@Override
+        protected List<String> getFieldOrder() {
+            return Arrays.asList("entryList");
+        }
+
+		public ST_ENTRY_DETAIL[] entryList;
+
+		public ST_ENTRY_DETAIL_LIST_INTERNAL(Pointer sourcePointer, int entryCount) {
+	        super(sourcePointer);
+	        entryList = new ST_ENTRY_DETAIL[entryCount];
+	        read();
+	    }
+	};
+
+	// 出馬表情報(内部使用)
+	public static class ST_RACECARD_DATA_INTERNAL extends Structure {
+
+		@Override
+        protected List<String> getFieldOrder() {
+            return Arrays.asList("place", "raceNo", "oddsTime", "entryCount", "entryData");
+        }
+
+		public short place;
+		public byte raceNo;
+		public byte[] oddsTime;
+		public int entryCount;
+		public Pointer entryData;
+
+		public ST_RACECARD_DATA_INTERNAL() {
+			place = 0;
+			raceNo = 0;
+			oddsTime = new byte[8];
+			entryCount = 0;
+			entryData = null;
+		}
+
+		// ポインタ渡し用の ByReference 内部クラス
+		public static class ByReference extends ST_RACECARD_DATA_INTERNAL implements Structure.ByReference {}
+	};
+
+	// 出馬表情報
+	public static class ST_RACECARD_DATA {
+
+		public short place;
+		public byte raceNo;
+		public String oddsTime;
+		public int entryCount;
+		public ST_ENTRY_DETAIL[] entries;
+
+		public ST_RACECARD_DATA() {
+			place = 0;
+			raceNo = 0;
+			oddsTime = "";
+			entryCount = 0;
+			entries = null;
+		}
+	}
+
 	//コンストラクタ
 	@SuppressWarnings("deprecation")
 	public IpatHelper()
@@ -628,7 +749,7 @@ public class IpatHelper {
 		return m_iPatHelperInvoker.BetWin5(betData, (short)waitMilliSeconds);
 	}
 
-	//オッズ取得(中央競馬のみ)
+	//オッズ取得(中央競馬・地方競馬に対応)
 	public int GetOdds(int place, int raceNo, int shikibetsu, ST_ODDS_DATA oddsData) {
 
 		ST_ODDS_DATA_INTERNAL tempOdds = new ST_ODDS_DATA_INTERNAL();
@@ -663,6 +784,41 @@ public class IpatHelper {
 		return returnValue;
 	}
 
+	//出馬表取得(中央競馬・地方競馬に対応)
+	public int GetRaceCard(int place, int raceNo, ST_RACECARD_DATA raceCard) {
+
+		ST_RACECARD_DATA_INTERNAL tempRaceCard = new ST_RACECARD_DATA_INTERNAL();
+
+		int returnValue = m_iPatHelperInvoker.GetRaceCard((short)place, (byte)raceNo, tempRaceCard);
+
+		raceCard.place = tempRaceCard.place;
+		raceCard.raceNo = tempRaceCard.raceNo;
+		raceCard.oddsTime = ByteArrayToString(tempRaceCard.oddsTime);
+		raceCard.entryCount = tempRaceCard.entryCount;
+		raceCard.entries = new ST_ENTRY_DETAIL[Math.max(tempRaceCard.entryCount, 0)];
+
+		// 取得失敗・明細なしはここで解放して戻る
+		if ((returnValue & 1) != 1 || tempRaceCard.entryCount <= 0 || tempRaceCard.entryData == null) {
+			ST_RACECARD_DATA_INTERNAL.ByReference ref = new ST_RACECARD_DATA_INTERNAL.ByReference();
+			ref.useMemory(tempRaceCard.getPointer(), 0);
+			m_iPatHelperInvoker.ReleaseRaceCardData(ref);
+			return returnValue;
+		}
+
+		// ポインターから出走馬明細リストを取得する
+		ST_ENTRY_DETAIL_LIST_INTERNAL entryList = new ST_ENTRY_DETAIL_LIST_INTERNAL(tempRaceCard.entryData, tempRaceCard.entryCount);
+		for (int i = 0; i < tempRaceCard.entryCount; i++) {
+			raceCard.entries[i] = entryList.entryList[i];
+		}
+
+		// 取得と同時にネイティブ側のメモリを解放する
+		ST_RACECARD_DATA_INTERNAL.ByReference ref = new ST_RACECARD_DATA_INTERNAL.ByReference();
+		ref.useMemory(tempRaceCard.getPointer(), 0);
+		m_iPatHelperInvoker.ReleaseRaceCardData(ref);
+
+		return returnValue;
+	}
+
 	//オッズ更新時刻(byte[8]、終端まで)を文字列へ変換する
 	private static String ByteArrayToString(byte[] bytes) {
 		int length = 0;
@@ -670,5 +826,14 @@ public class IpatHelper {
 			length++;
 		}
 		return new String(bytes, 0, length, java.nio.charset.StandardCharsets.US_ASCII);
+	}
+
+	//馬名等(byte[]、UTF-8、終端まで)を文字列へ変換する
+	public static String Utf8ToString(byte[] bytes) {
+		int length = 0;
+		while (length < bytes.length && bytes[length] != 0) {
+			length++;
+		}
+		return new String(bytes, 0, length, java.nio.charset.StandardCharsets.UTF_8);
 	}
 }

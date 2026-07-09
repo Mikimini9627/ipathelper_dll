@@ -652,6 +652,138 @@ extern	"C" {
 	};
 
 	/// <summary>
+	/// 出走馬明細(出馬表の1頭分)
+	/// </summary>
+	struct ST_ENTRY_DETAIL {
+
+		/// <summary>
+		/// 枠番
+		/// </summary>
+		unsigned char ucWakuban;
+
+		/// <summary>
+		/// 馬番
+		/// </summary>
+		unsigned char ucUmaban;
+
+		/// <summary>
+		/// 馬名(UTF-8)
+		/// </summary>
+		char szHorseName[64];
+
+		/// <summary>
+		/// 性別(UTF-8: 牡/牝/セン等)
+		/// </summary>
+		char szSex[8];
+
+		/// <summary>
+		/// 年齢
+		/// </summary>
+		unsigned char ucAge;
+
+		/// <summary>
+		/// 馬体重状態(0:通常 1:未発表 2:出走取消 3:計量不能)
+		/// </summary>
+		unsigned char ucWeightStatus;
+
+		/// <summary>
+		/// 馬体重(kg)。ucWeightStatusが0以外の場合は0
+		/// </summary>
+		unsigned short usWeight;
+
+		/// <summary>
+		/// 馬体重増減符号(0:なし 1:増 2:減 3:増減なし 7:初出走 8:前計不)
+		/// </summary>
+		unsigned char ucWeightDiffCode;
+
+		/// <summary>
+		/// 馬体重増減量(kg)
+		/// </summary>
+		unsigned short usWeightDiff;
+
+		/// <summary>
+		/// 見習騎手コード(0:なし 1:☆1kg減〜5:5kg減相当 9:女性騎手2kg減)
+		/// </summary>
+		unsigned char ucApprentice;
+
+		/// <summary>
+		/// 騎手名(UTF-8)
+		/// </summary>
+		char szJockeyName[48];
+
+		/// <summary>
+		/// 斤量×10。例:57.0kg→570
+		/// </summary>
+		unsigned short usBurden;
+
+		/// <summary>
+		/// 調教師名(UTF-8)
+		/// </summary>
+		char szTrainerName[48];
+
+		/// <summary>
+		/// 単勝人気(0:データなし)
+		/// </summary>
+		unsigned short usWinPopular;
+
+		/// <summary>
+		/// 単勝オッズ状態(0:通常 1:発売中止 2:オッズ未取得)
+		/// </summary>
+		unsigned char ucWinOddsStatus;
+
+		/// <summary>
+		/// 単勝オッズ×10。例:12.3倍→123
+		/// </summary>
+		unsigned int unWinOdds;
+
+		/// <summary>
+		/// 複勝オッズ状態(0:通常 1:発売中止 2:オッズ未取得)
+		/// </summary>
+		unsigned char ucPlaceOddsStatus;
+
+		/// <summary>
+		/// 複勝オッズ下限×10
+		/// </summary>
+		unsigned int unPlaceOddsLow;
+
+		/// <summary>
+		/// 複勝オッズ上限×10
+		/// </summary>
+		unsigned int unPlaceOddsHigh;
+	};
+
+	/// <summary>
+	/// 出馬表情報
+	/// </summary>
+	struct ST_RACECARD_DATA {
+
+		/// <summary>
+		/// 開催場(入力値)
+		/// </summary>
+		unsigned short usPlace;
+
+		/// <summary>
+		/// レース番号(入力値)
+		/// </summary>
+		unsigned char ucRaceNo;
+
+		/// <summary>
+		/// オッズ更新時刻 "HH:MM"
+		/// </summary>
+		char szOddsTime[8];
+
+		/// <summary>
+		/// 出走馬数
+		/// </summary>
+		unsigned int unEntryCount;
+
+		/// <summary>
+		/// 出走馬明細配列
+		/// </summary>
+		ST_ENTRY_DETAIL* pobjEntry;
+	};
+
+	/// <summary>
 	/// I-PATへログインします。
 	/// </summary>
 	/// <param name="szINetId">I-NET ID</param>
@@ -832,7 +964,8 @@ extern	"C" {
 	/// <summary>
 	/// <para>指定レース・式別のオッズを取得します。</para>
 	/// <para>単勝・複勝は基本オッズ、枠連〜三連単は全通りのオッズ表を取得します。</para>
-	/// <para>中央競馬のみ対応です。使用後は必ずReleaseOddsDataで解放してください。</para>
+	/// <para>中央競馬・地方競馬の両方に対応しています(海外は非対応)。</para>
+	/// <para>使用後は必ずReleaseOddsDataで解放してください。</para>
 	/// </summary>
 	/// <param name="usPlace">開催場(KAISAI)</param>
 	/// <param name="ucRaceNo">レース番号</param>
@@ -853,6 +986,32 @@ extern	"C" {
 	/// <param name="pobjOdds">オッズ情報</param>
 	void ReleaseOddsData(
 		ST_ODDS_DATA* pobjOdds
+	);
+
+	/// <summary>
+	/// <para>指定レースの出馬表を取得します。</para>
+	/// <para>中央競馬・地方競馬の両方に対応しています(海外は非対応)。</para>
+	/// <para>各出走馬の枠番・馬番・馬名・性齢・馬体重・騎手・斤量・調教師・
+	/// 単勝人気・単勝/複勝オッズを取得します。文字列はUTF-8で格納されます。</para>
+	/// <para>使用後は必ずReleaseRaceCardDataで解放してください。</para>
+	/// </summary>
+	/// <param name="usPlace">開催場(KAISAI)</param>
+	/// <param name="ucRaceNo">レース番号</param>
+	/// <param name="pobjRaceCard">出馬表情報</param>
+	/// <returns></returns>
+	unsigned int GetRaceCard(
+		const unsigned short usPlace,
+		const unsigned char ucRaceNo,
+		ST_RACECARD_DATA* pobjRaceCard
+	);
+
+	/// <summary>
+	/// <para>出馬表情報を解放します。</para>
+	/// <para>GetRaceCardの可否に依らず必ず実行してください。</para>
+	/// </summary>
+	/// <param name="pobjRaceCard">出馬表情報</param>
+	void ReleaseRaceCardData(
+		ST_RACECARD_DATA* pobjRaceCard
 	);
 
 #ifdef __cplusplus
