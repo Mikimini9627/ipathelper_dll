@@ -48,6 +48,11 @@
 - 枠番・馬番・馬名・性齢・馬体重・騎手・斤量・調教師・単勝人気・単勝/複勝オッズを取得
 - 文字列は UTF-8。取得後は必ず `ReleaseRaceCardData` でメモリを解放してください
 
+### お知らせ取得
+- `GetNotice` で現在有効なお知らせを取得（**中央競馬・地方競馬に対応**）
+- 強制表示お知らせ本文に加え、お知らせ一覧（タイトル・日付・URL 等）を全件取得
+- 文字列は UTF-8。取得後は必ず `ReleaseNoticeData` でメモリを解放してください
+
 ---
 
 ## 🌏 対応競馬場
@@ -110,6 +115,10 @@ void         ReleaseOddsData(ST_ODDS_DATA* pobjOdds);
 unsigned int GetRaceCard(const unsigned short usPlace, const unsigned char ucRaceNo,
                          ST_RACECARD_DATA* pobjRaceCard);
 void         ReleaseRaceCardData(ST_RACECARD_DATA* pobjRaceCard);
+
+// お知らせ取得(中央競馬・地方競馬に対応)
+unsigned int GetNotice(ST_NOTICE_DATA* pobjNotice);
+void         ReleaseNoticeData(ST_NOTICE_DATA* pobjNotice);
 ```
 
 戻り値は `RETURN_VALUE` 列挙体のビットフラグです。

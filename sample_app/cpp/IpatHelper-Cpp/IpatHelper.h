@@ -784,6 +784,68 @@ extern	"C" {
 	};
 
 	/// <summary>
+	/// お知らせ一覧の1件分(sai配列の1要素)
+	/// </summary>
+	struct ST_NOTICE_ITEM {
+
+		/// <summary>
+		/// タイトル(UTF-8)
+		/// </summary>
+		char szTitle[512];
+
+		/// <summary>
+		/// 日付テキスト(UTF-8)
+		/// </summary>
+		char szDate[64];
+
+		/// <summary>
+		/// リンクURL
+		/// </summary>
+		char szUrl[1024];
+
+		/// <summary>
+		/// アイコンファイル名
+		/// </summary>
+		char szIcon[128];
+
+		/// <summary>
+		/// 日付表示色
+		/// </summary>
+		char szColor[32];
+	};
+
+	/// <summary>
+	/// お知らせ情報
+	/// </summary>
+	struct ST_NOTICE_DATA {
+
+		/// <summary>
+		/// 強制表示お知らせ本文(foinf, UTF-8)。無い場合は空文字。
+		/// </summary>
+		char szMessage[2048];
+
+		/// <summary>
+		/// お知らせ番号(fino)
+		/// </summary>
+		char szNoticeNo[16];
+
+		/// <summary>
+		/// お知らせ種別(fit)
+		/// </summary>
+		char szNoticeType[8];
+
+		/// <summary>
+		/// お知らせ一覧(sai)の件数
+		/// </summary>
+		unsigned int unItemCount;
+
+		/// <summary>
+		/// お知らせ一覧配列(unItemCount件)。0件の場合はnullptr。
+		/// </summary>
+		ST_NOTICE_ITEM* pobjItem;
+	};
+
+	/// <summary>
 	/// I-PATへログインします。
 	/// </summary>
 	/// <param name="szINetId">I-NET ID</param>
@@ -1012,6 +1074,28 @@ extern	"C" {
 	/// <param name="pobjRaceCard">出馬表情報</param>
 	void ReleaseRaceCardData(
 		ST_RACECARD_DATA* pobjRaceCard
+	);
+
+	/// <summary>
+	/// <para>現在有効なお知らせを取得します。</para>
+	/// <para>ログイン済みのセッションが必要です(中央優先、失敗時は地方へフォールバック)。</para>
+	/// <para>強制表示お知らせ本文(szMessage)と、お知らせ一覧(pobjItem/unItemCount)を返します。</para>
+	/// <para>お知らせが無い場合はszMessageが空文字・unItemCountが0で成功を返します。</para>
+	/// <para>使用後は必ずReleaseNoticeDataで解放してください。</para>
+	/// </summary>
+	/// <param name="pobjNotice">お知らせ情報</param>
+	/// <returns></returns>
+	unsigned int GetNotice(
+		ST_NOTICE_DATA* pobjNotice
+	);
+
+	/// <summary>
+	/// <para>お知らせ情報を解放します。</para>
+	/// <para>GetNoticeの可否に依らず必ず実行してください。</para>
+	/// </summary>
+	/// <param name="pobjNotice">お知らせ情報</param>
+	void ReleaseNoticeData(
+		ST_NOTICE_DATA* pobjNotice
 	);
 
 #ifdef __cplusplus
