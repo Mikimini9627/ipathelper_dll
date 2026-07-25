@@ -70,6 +70,7 @@ public class IpatHelper {
 		public static final int KAISAI_DEAUVILE = 27;
 		public static final int KAISAI_CHURCHILLDOWNS = 28;
 		public static final int KAISAI_ABDULAZIZ = 29;
+		public static final int KAISAI_ASCOT = 30;
 	}
 
 	//方式
@@ -77,6 +78,14 @@ public class IpatHelper {
 		public static final int HOUSHIKI_NORMAL	 = 0;
 		public static final int HOUSHIKI_FORMATION	 = 1;
 		public static final int HOUSHIKI_BOX = 2;
+		public static final int HOUSHIKI_WHEEL_1ST = 3;          // 軸1頭ながし(1着流し)/馬連・ワイド・枠連/三連複軸1頭/三連単1着。買い目「軸-相手」
+		public static final int HOUSHIKI_WHEEL_2ND = 4;          // 2着ながし(馬単・三連単)。買い目「軸-相手」
+		public static final int HOUSHIKI_WHEEL_3RD = 5;          // 3着ながし(三連単)。買い目「軸-相手」
+		public static final int HOUSHIKI_WHEEL_1ST_2ND = 6;      // 軸2頭ながし(三連複)/1・2着ながし(三連単)
+		public static final int HOUSHIKI_WHEEL_1ST_3RD = 7;      // 1・3着ながし(三連単)。買い目「1着軸-相手-3着軸」
+		public static final int HOUSHIKI_WHEEL_2ND_3RD = 8;      // 2・3着ながし(三連単)。買い目「相手-2着軸-3着軸」
+		public static final int HOUSHIKI_WHEEL_MULTI_AXIS1 = 9;  // 軸1頭ながしマルチ(馬単・三連単)。買い目「軸-相手」
+		public static final int HOUSHIKI_WHEEL_MULTI_AXIS2 = 10; // 軸2頭ながしマルチ(三連単)。買い目「軸-軸-相手」
 	}
 
 	//式別
@@ -349,7 +358,7 @@ public class IpatHelper {
 
 		@Override
         protected List<String> getFieldOrder() {
-            return Arrays.asList("place", "raceNo",  "youbi", "kaikata", "shikibetsu", "kingaku", "umabanNo", "totalAmount");
+            return Arrays.asList("place", "raceNo",  "youbi", "kaikata", "shikibetsu", "kingaku", "umabanNo", "totalAmount", "multi");
         }
 
 		public short place;
@@ -360,6 +369,7 @@ public class IpatHelper {
 		public int kingaku;
 		public int[] umabanNo;
 		public int totalAmount;
+		public byte multi; // マルチかどうか(0:通常 1:マルチ)
 
 		public ST_BET_DATA() {
 			place = 0;
@@ -370,6 +380,7 @@ public class IpatHelper {
 			kingaku = 0;
 			umabanNo = new int[3];
 			totalAmount = 0;
+			multi = 0;
 		}
 	}
 

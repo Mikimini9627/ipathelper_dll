@@ -15,6 +15,39 @@ extern	"C" {
 #endif
 
 	/// <summary>
+	/// ログレベル
+	/// </summary>
+	enum LOG_LEVEL {
+		LOG_LEVEL_TRACE = 0,	///< 詳細トレース
+		LOG_LEVEL_INFO,			///< 情報 (既定の DEBUG_PRINTF はこのレベル)
+		LOG_LEVEL_WARN,			///< 警告
+		LOG_LEVEL_ERROR			///< エラー
+	};
+
+	/// <summary>
+	/// ログコールバック型。DLL 内部のログを受け取るために利用者が実装する。
+	/// </summary>
+	/// <param name="nLevel">ログレベル (LOG_LEVEL)</param>
+	/// <param name="pszMessage">
+	/// ログ本文 (null 終端)。内部診断メッセージのため、文字コードは DLL の
+	/// ネイティブ ANSI (日本語環境では CP932)。C# では Encoding.GetEncoding(932) で
+	/// デコードしてください (応答データ本文の各 API は従来どおり UTF-8)。
+	/// </param>
+	typedef void (*LogCallback)(int nLevel, const char* pszMessage);
+
+	/// <summary>
+	/// <para>ログコールバックを登録します。Release ビルドでもログを取得できます。</para>
+	/// <para>callback に nullptr を渡すと解除します。nMinLevel 未満のログは通知されません。</para>
+	/// <para>コールバック未登録時 (Release) はログ生成コスト自体が発生しません。</para>
+	/// </summary>
+	/// <param name="callback">ログコールバック (nullptr で解除)</param>
+	/// <param name="nMinLevel">通知する最小レベル (LOG_LEVEL)</param>
+	void SetLogCallback(
+		LogCallback callback,
+		int         nMinLevel
+	);
+
+	/// <summary>
 	/// 曜日
 	/// </summary>
 	enum class WEEK_DAY {
@@ -247,28 +280,82 @@ extern	"C" {
 		/// <summary>
 		/// キングアブドゥルアジーズ
 		/// </summary>
-		ABDULAZIZ
+		ABDULAZIZ,
+
+		/// <summary>
+		/// アスコット
+		/// </summary>
+		ASCOT
 	};
 
 	/// <summary>
-	/// 方式
+	/// <para>方式</para>
+	/// <para>0〜8 は IPAT の送信方式コードと一致します。ながし系は買い目の列(買い目文字列の</para>
+	/// <para>ハイフン区切り)の意味が式別により異なります(詳細は README「買い目文字列の書式」)。</para>
+	/// <para>マルチ(WHEEL_MULTI_*)は馬単・三連単のみ有効で、GetBetInstance が内部で</para>
+	/// <para>基底のながし方式(軸1頭=WHEEL_1ST, 軸2頭=WHEEL_1ST_2ND)＋マルチフラグへ変換します。</para>
 	/// </summary>
 	enum class HOUSHIKI {
 
 		/// <summary>
 		/// 通常
 		/// </summary>
-		NORMAL,
+		NORMAL = 0,
 
 		/// <summary>
 		/// フォーメーション
 		/// </summary>
-		FORMATION,
+		FORMATION = 1,
 
 		/// <summary>
 		/// ボックス
 		/// </summary>
-		BOX
+		BOX = 2,
+
+		/// <summary>
+		/// <para>軸1頭ながし(1着流し)。</para>
+		/// <para>馬連・ワイド・枠連ながし / 馬単1着ながし / 三連複軸1頭ながし / 三連単1着ながし。</para>
+		/// <para>買い目: 「軸-相手」(軸1頭 - 相手)。</para>
+		/// </summary>
+		WHEEL_1ST = 3,
+
+		/// <summary>
+		/// <para>2着ながし。馬単2着ながし / 三連単2着ながし。買い目: 「軸-相手」。</para>
+		/// </summary>
+		WHEEL_2ND = 4,
+
+		/// <summary>
+		/// <para>3着ながし。三連単3着ながし。買い目: 「軸-相手」。</para>
+		/// </summary>
+		WHEEL_3RD = 5,
+
+		/// <summary>
+		/// <para>軸2頭ながし。三連複軸2頭ながし / 三連単1・2着ながし。</para>
+		/// <para>三連複: 買い目「軸,軸-相手」。三連単: 買い目「1着軸-2着軸-相手」(着順)。</para>
+		/// </summary>
+		WHEEL_1ST_2ND = 6,
+
+		/// <summary>
+		/// <para>三連単1・3着ながし。買い目: 「1着軸-相手-3着軸」(着順)。</para>
+		/// </summary>
+		WHEEL_1ST_3RD = 7,
+
+		/// <summary>
+		/// <para>三連単2・3着ながし。買い目: 「相手-2着軸-3着軸」(着順)。</para>
+		/// </summary>
+		WHEEL_2ND_3RD = 8,
+
+		/// <summary>
+		/// <para>軸1頭ながしマルチ(馬単・三連単のみ)。</para>
+		/// <para>軸と相手の全着順を購入します。買い目: 「軸-相手」。</para>
+		/// </summary>
+		WHEEL_MULTI_AXIS1 = 9,
+
+		/// <summary>
+		/// <para>軸2頭ながしマルチ(三連単のみ)。</para>
+		/// <para>軸2頭と相手の全着順を購入します。買い目: 「軸-軸-相手」(各列に軸を1頭ずつ、末尾に相手)。</para>
+		/// </summary>
+		WHEEL_MULTI_AXIS2 = 10
 	};
 
 	/// <summary>
@@ -556,6 +643,13 @@ extern	"C" {
 		/// 合計購入額
 		/// </summary>
 		unsigned int unTotalAmount;
+
+		/// <summary>
+		/// <para>マルチかどうか(0:通常 1:マルチ)。</para>
+		/// <para>馬単・三連単のながし方式でのみ有効。GetBetInstance が</para>
+		/// <para>HOUSHIKI::WHEEL_MULTI_* 指定時に 1 を設定します。</para>
+		/// </summary>
+		unsigned char ucMulti;
 	};
 
 	/// <summary>

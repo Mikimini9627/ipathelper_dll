@@ -36,10 +36,19 @@ KAISAI_SANTAANITA = 26
 KAISAI_DEAUVILE = 27
 KAISAI_CHURCHILLDOWNS = 28
 KAISAI_ABDULAZIZ = 29
+KAISAI_ASCOT = 30
 
 HOUSHIKI_NORMAL = 0
 HOUSHIKI_FORMATION = 1
 HOUSHIKI_BOX = 2
+HOUSHIKI_WHEEL_1ST = 3          # 軸1頭ながし(1着流し)/馬連・ワイド・枠連/三連複軸1頭/三連単1着。買い目「軸-相手」
+HOUSHIKI_WHEEL_2ND = 4          # 2着ながし(馬単・三連単)。買い目「軸-相手」
+HOUSHIKI_WHEEL_3RD = 5          # 3着ながし(三連単)。買い目「軸-相手」
+HOUSHIKI_WHEEL_1ST_2ND = 6      # 軸2頭ながし(三連複)/1・2着ながし(三連単)
+HOUSHIKI_WHEEL_1ST_3RD = 7      # 1・3着ながし(三連単)。買い目「1着軸-相手-3着軸」
+HOUSHIKI_WHEEL_2ND_3RD = 8      # 2・3着ながし(三連単)。買い目「相手-2着軸-3着軸」
+HOUSHIKI_WHEEL_MULTI_AXIS1 = 9  # 軸1頭ながしマルチ(馬単・三連単)。買い目「軸-相手」
+HOUSHIKI_WHEEL_MULTI_AXIS2 = 10 # 軸2頭ながしマルチ(三連単)。買い目「軸-軸-相手」
 
 SHIKIBETSU_WIN = 1
 SHIKIBETSU_PLACE = 	2
@@ -146,7 +155,8 @@ class ST_PURCHASE_DATA_INTERNAL(Structure):
 
 class ST_BET_DATA(Structure):
     _fields_ = [("Place", c_ushort), ("RaceNo", c_byte), ("Youbi", c_byte), ("Kaikata", c_byte),\
-         ("Shikibetsu", c_byte), ("Kingaku", c_uint), ("Umaban", c_uint * 3), ("TotalAmount", c_long)]
+         ("Shikibetsu", c_byte), ("Kingaku", c_uint), ("Umaban", c_uint * 3), ("TotalAmount", c_long),\
+         ("Multi", c_byte)]  # Multi: マルチかどうか(0:通常 1:マルチ)
 
 class ST_BET_DATA_WIN5(Structure):
     _fields_ = [("Kingaku", c_uint), ("Youbi", c_byte), ("Umaban", c_uint * 5)]

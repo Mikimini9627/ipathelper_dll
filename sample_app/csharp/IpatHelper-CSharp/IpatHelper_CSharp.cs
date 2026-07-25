@@ -85,6 +85,7 @@ namespace IpatHelper_DotNetSampleApl
             [MarshalAs(UnmanagedType.ByValArray, SizeConst = 3)]
             public uint[] horseNo;
             public uint totalAmount;
+            public byte multi; // マルチかどうか(0:通常 1:マルチ)
         };
 
         [StructLayout(LayoutKind.Sequential)]
@@ -232,14 +233,23 @@ namespace IpatHelper_DotNetSampleApl
             SANTAANITA,
             DEAUVILE,
             CHURCHILLDOWNS,
-            ABDULAZIZ
+            ABDULAZIZ,
+            ASCOT
         }
 
         public enum Houshiki
         {
             NORMAL = 0,
-            FORMATION,
-            BOX
+            FORMATION = 1,
+            BOX = 2,
+            WHEEL_1ST = 3,        // 軸1頭ながし(1着流し)/馬連・ワイド・枠連/三連複軸1頭/三連単1着
+            WHEEL_2ND = 4,        // 2着ながし(馬単・三連単)
+            WHEEL_3RD = 5,        // 3着ながし(三連単)
+            WHEEL_1ST_2ND = 6,    // 軸2頭ながし(三連複)/1・2着ながし(三連単)
+            WHEEL_1ST_3RD = 7,    // 1・3着ながし(三連単)
+            WHEEL_2ND_3RD = 8,    // 2・3着ながし(三連単)
+            WHEEL_MULTI_AXIS1 = 9,// 軸1頭ながしマルチ(馬単・三連単)
+            WHEEL_MULTI_AXIS2 = 10// 軸2頭ながしマルチ(三連単)
         }
 
         public enum Shikibetsu

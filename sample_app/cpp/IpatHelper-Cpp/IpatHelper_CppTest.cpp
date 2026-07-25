@@ -77,6 +77,20 @@ int main()
 		return 1;
 	}
 
+	// ながし・マルチの購入例(最新DLL対応: 中央・地方・海外すべてで指定可能)
+	// 三連単軸1頭ながしマルチ 軸=9 / 相手=3,7,8,10 (中山 11R、100円)。
+	// マルチ指定時は生成された objMulti.ucMulti に 1 が設定され、unTotalAmount に合計額が入る。
+	ST_BET_DATA objMulti = { 0 };
+	unReturn = GetBetInstance((unsigned char)KAISAI::NAKAYAMA, 11, 2020, 12, 27,
+		(unsigned char)HOUSHIKI::WHEEL_MULTI_AXIS1, (unsigned char)SHIKIBETSU::TRIFECTA,
+		100, "9-3,7,8,10", &objMulti);
+	if ((unReturn & 1) == 1) {
+		cout << "Multi: multi=" << (int)objMulti.ucMulti
+			<< " total=" << objMulti.unTotalAmount << " yen" << endl;
+		vector<ST_BET_DATA> vctMulti = { objMulti };
+		Bet(vctMulti.data(), (unsigned short)vctMulti.size());
+	}
+
 	// 馬券購入用のインスタンス取得(WIN5)
 	ST_BET_DATA_WIN5 objBetDataWin5 = { 0 };
 	unReturn = GetBetInstanceWin5(100, 2020, 12, 27, "14-9,13-12-2-1,3,4,5", &objBetDataWin5);
