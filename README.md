@@ -1,7 +1,7 @@
 # IpatHelper
 
-**IpatHelper.dll** は [JRA](https://www.jra.go.jp/) の即PAT投票機能を各種プログラムから呼び出すためのWindows用DLLモジュールです。  
-中央競馬・地方競馬の両方に対応しており、ログインから馬券購入まで一連のフローをシンプルなAPIで操作できます。
+**IpatHelper.dll** は [JRA](https://www.jra.go.jp/) の即PAT（I-PAT）投票機能を各種プログラムから呼び出すためのWindows用DLLモジュールです。  
+中央競馬・地方競馬・海外競馬・WIN5 に対応しており、ログイン・入出金・馬券購入・購入履歴取得・オッズ取得・出馬表取得までの一連のフローを、シンプルな公開APIで操作できます。
 
 > 個人でJV-Link関連の実装をしていたところ「投票モジュールを自分用に作っておきたいな」と思ったのが開発のきっかけです。  
 > 最終的にはプログラミングを通して競馬に興味をもってもらうことを目的として公開しました。
@@ -65,7 +65,7 @@
 園田、姫路、名古屋、門別、盛岡、水沢、浦和、船橋、大井、川崎、笠松、金沢、高知、佐賀
 
 ### 海外
-ロンシャン、シャティン、サンタアニタ、ドーヴィル、チャーチルダウンズ、キングアブドゥルアジーズ
+ロンシャン、シャティン、サンタアニタ、ドーヴィル、チャーチルダウンズ、キングアブドゥルアジーズ、アスコット
 
 ---
 
@@ -137,12 +137,22 @@ void         ReleaseNoticeData(ST_NOTICE_DATA* pobjNotice);
 
 ## 🚀 クイックスタート
 
-実装サンプルをリポジトリ内に用意しています。各言語ごとのサンプルを参考にしてください。  
-Pythonを使う場合は [PyPI](https://pypi.org/project/ipathelper/) からもインストール可能です。
+実装サンプルをリポジトリ内に用意しています（`sample_app/` 配下に C++ / C# / Python）。各言語ごとのサンプルを参考にしてください。  
+主要言語向けにはラッパーライブラリを配布しているため、DLL を直接扱わずに導入できます。
+
+**Python（PyPI）** — [ipathelper](https://pypi.org/project/ipathelper/)
 
 ```bash
 pip install ipathelper
 ```
+
+**C# / .NET（NuGet）** — [IpatHelperNet](https://www.nuget.org/packages/IpatHelperNet)
+
+```bash
+dotnet add package IpatHelperNet
+```
+
+どちらのパッケージにもネイティブ DLL（x64 / x86）が同梱されるため、DLL の個別配置は不要です。
 
 ---
 
