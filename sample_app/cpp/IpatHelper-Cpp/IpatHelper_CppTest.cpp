@@ -1,13 +1,19 @@
 #include "IpatHelper.h"
 #include <iostream>
 #include <vector>
+#include <windows.h>
 
 using namespace std;
 
 int main()
 {
+	// DLL が返す文字列 (馬名・レース名等) は UTF-8。既定のコンソール (CP932) の
+	// ままだと UTF-8 バイト列がそのまま解釈され文字化けするため、出力コードページを
+	// UTF-8 に切り替える。日本語が表示できるフォント (MS ゴシック等) も必要。
+	SetConsoleOutputCP(CP_UTF8);
+
 	unsigned int unReturn = 0;
-	
+
 	// ログイン処理(各自自分のIDに変えてください)
 	unReturn = Login("********", "********", "****", "****");
 	if ((unReturn & 1) != 1) {
