@@ -189,6 +189,8 @@ namespace IpatHelper_DotNetSampleApl
             public byte[] szOddsTime;
             public uint unEntryCount;
             public IntPtr pobjEntry;
+            [MarshalAs(UnmanagedType.ByValArray, SizeConst = 128)]
+            public byte[] szRaceName;
         }
 
         public struct ST_RACECARD_DATA
@@ -198,6 +200,7 @@ namespace IpatHelper_DotNetSampleApl
             public string oddsTime;
             public uint entryCount;
             public ST_ENTRY_DETAIL[] entries;
+            public string raceName;
         };
         #endregion
 
@@ -688,7 +691,8 @@ namespace IpatHelper_DotNetSampleApl
                 ucRaceNo = 0,
                 szOddsTime = new byte[8],
                 unEntryCount = 0,
-                pobjEntry = IntPtr.Zero
+                pobjEntry = IntPtr.Zero,
+                szRaceName = new byte[128]
             };
 
             uint returnValue = NativeMethods.GetRaceCard((ushort)place, raceNo, ref tempRaceCardData);
@@ -699,7 +703,8 @@ namespace IpatHelper_DotNetSampleApl
                 raceNo = tempRaceCardData.ucRaceNo,
                 oddsTime = DecodeUtf8(tempRaceCardData.szOddsTime),
                 entryCount = tempRaceCardData.unEntryCount,
-                entries = Array.Empty<ST_ENTRY_DETAIL>()
+                entries = Array.Empty<ST_ENTRY_DETAIL>(),
+                raceName = DecodeUtf8(tempRaceCardData.szRaceName)
             };
 
             // 取得失敗、または明細が無い場合はここで解放して戻る
