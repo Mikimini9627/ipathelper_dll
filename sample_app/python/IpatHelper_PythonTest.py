@@ -1,6 +1,16 @@
 from IpatHelper_Python import *
+import sys
+import ctypes
 
 def main():
+
+    # DLL が返す文字列 (馬名・レース名等) は UTF-8。既定の Windows コンソール (CP932) と
+    # Python の標準出力の双方を UTF-8 に合わせないと文字化けするため、両方を切り替える。
+    try:
+        ctypes.windll.kernel32.SetConsoleOutputCP(65001)
+        sys.stdout.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
 
     try:
         # モジュールのイニシャライズ

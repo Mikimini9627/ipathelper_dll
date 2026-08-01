@@ -1,7 +1,29 @@
+import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
+
+import com.sun.jna.Native;
+import com.sun.jna.win32.StdCallLibrary;
+
 public class Program {
 
+	// Windows コンソール出力コードページを UTF-8 に切り替えるための最小 JNA 定義。
+	// kernel32 は WINAPI (stdcall) のため StdCallLibrary を使う (x86 でも安全)。
+	private interface Kernel32 extends StdCallLibrary {
+		Kernel32 INSTANCE = Native.load("kernel32", Kernel32.class);
+		boolean SetConsoleOutputCP(int wCodePageID);
+	}
+
 	public static void main(String[] args) {
-		
+
+		// DLL が返す文字列 (馬名・レース名等) は UTF-8。既定のコンソール (CP932) と
+		// System.out の双方を UTF-8 に合わせないと文字化けするため、両方を切り替える。
+		try {
+			Kernel32.INSTANCE.SetConsoleOutputCP(65001);
+			System.setOut(new PrintStream(System.out, true, StandardCharsets.UTF_8));
+		} catch (Throwable ignore) {
+			// コンソールが無い/JNA 未解決などの環境では無視して続行する
+		}
+
 		int returnValue = 0;
 		
 		//IpatHelperのインスタンスを取得する
