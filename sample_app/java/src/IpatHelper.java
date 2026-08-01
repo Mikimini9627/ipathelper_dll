@@ -575,7 +575,7 @@ public class IpatHelper {
 
 		@Override
         protected List<String> getFieldOrder() {
-            return Arrays.asList("place", "raceNo", "oddsTime", "entryCount", "entryData");
+            return Arrays.asList("place", "raceNo", "oddsTime", "entryCount", "entryData", "raceName");
         }
 
 		public short place;
@@ -583,6 +583,7 @@ public class IpatHelper {
 		public byte[] oddsTime;
 		public int entryCount;
 		public Pointer entryData;
+		public byte[] raceName;
 
 		public ST_RACECARD_DATA_INTERNAL() {
 			place = 0;
@@ -590,6 +591,7 @@ public class IpatHelper {
 			oddsTime = new byte[8];
 			entryCount = 0;
 			entryData = null;
+			raceName = new byte[128];
 		}
 
 		// ポインタ渡し用の ByReference 内部クラス
@@ -604,6 +606,7 @@ public class IpatHelper {
 		public String oddsTime;
 		public int entryCount;
 		public ST_ENTRY_DETAIL[] entries;
+		public String raceName;
 
 		public ST_RACECARD_DATA() {
 			place = 0;
@@ -611,6 +614,7 @@ public class IpatHelper {
 			oddsTime = "";
 			entryCount = 0;
 			entries = null;
+			raceName = "";
 		}
 	}
 
@@ -807,6 +811,8 @@ public class IpatHelper {
 		raceCard.oddsTime = ByteArrayToString(tempRaceCard.oddsTime);
 		raceCard.entryCount = tempRaceCard.entryCount;
 		raceCard.entries = new ST_ENTRY_DETAIL[Math.max(tempRaceCard.entryCount, 0)];
+		// レース名はUTF-8のため専用ヘルパーで変換する(oddsTimeはascii)
+		raceCard.raceName = Utf8ToString(tempRaceCard.raceName);
 
 		// 取得失敗・明細なしはここで解放して戻る
 		if ((returnValue & 1) != 1 || tempRaceCard.entryCount <= 0 || tempRaceCard.entryData == null) {

@@ -30,6 +30,7 @@ namespace IpatHelper_DotNetSampleApl
             returnValue = IpatHelper.GetRaceCard(IpatHelper.Kaisai.TOKYO, 11, out IpatHelper.ST_RACECARD_DATA raceCard);
             if ((returnValue & 1) == 1)
             {
+                Console.WriteLine($"Race Name: {raceCard.raceName}");
                 Console.WriteLine($"Odds Time: {raceCard.oddsTime} / Entries: {raceCard.entryCount}");
                 foreach (var entry in raceCard.entries)
                 {

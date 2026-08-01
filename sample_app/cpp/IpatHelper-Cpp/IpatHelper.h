@@ -875,6 +875,11 @@ extern	"C" {
 		/// 出走馬明細配列
 		/// </summary>
 		ST_ENTRY_DETAIL* pobjEntry;
+
+		/// <summary>
+		/// レース名(UTF-8)。開催メニュー(ri)から取得。取得できない場合は空文字。
+		/// </summary>
+		char szRaceName[128];
 	};
 
 	/// <summary>

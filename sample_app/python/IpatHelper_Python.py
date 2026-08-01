@@ -138,6 +138,7 @@ class ST_RACECARD_DATA:
         self.OddsTime = ""
         self.EntryCount = 0
         self.EntryData = []
+        self.RaceName = ""
 
 #構造体マーシャリング用クラス
 class ST_TICKET_DATA_DETAIL(Structure):
@@ -181,8 +182,9 @@ class ST_ENTRY_DETAIL(Structure):
         ("PlaceOddsStatus", c_byte), ("PlaceOddsLow", c_uint), ("PlaceOddsHigh", c_uint)]
 
 class ST_RACECARD_DATA_INTERNAL(Structure):
+    # RaceName(レース名, UTF-8のbytes)はネイティブ側構造体の末尾に追加されている
     _fields_ = [("Place", c_ushort), ("RaceNo", c_byte), ("OddsTime", c_char * 8), \
-        ("EntryCount", c_uint), ("EntryData", c_void_p)]
+        ("EntryCount", c_uint), ("EntryData", c_void_p), ("RaceName", c_char * 128)]
 
 def init():
     '''
@@ -491,6 +493,8 @@ def get_race_card(place : int, raceNo : int, raceCard : ST_RACECARD_DATA) -> int
     raceCard.RaceNo = tempRaceCardData.RaceNo
     raceCard.OddsTime = tempRaceCardData.OddsTime.decode('ascii', errors='ignore')
     raceCard.EntryCount = tempRaceCardData.EntryCount
+    # レース名はUTF-8のbytesのためutf-8でデコードする
+    raceCard.RaceName = tempRaceCardData.RaceName.decode('utf-8', errors='ignore')
 
     # 取得失敗・明細なしはここで解放して戻る
     if (returnValue & 1) != 1 or tempRaceCardData.EntryCount <= 0 or not tempRaceCardData.EntryData:
