@@ -35,6 +35,7 @@
 ### 馬券購入
 - `GetBetInstance` で購入情報を構築し、`Bet` で一括購入
 - WIN5専用の `GetBetInstanceWin5` / `BetWin5` にも対応
+- WIN5の**セレクト / ランダム購入**は `BetWin5Auto`（買い目はサーバが生成。軸馬の指定も可能）
 - 購入方式: **通常 / フォーメーション / ボックス / ながし（軸1頭・軸2頭）/ マルチ**
 - 式別: **単勝 / 複勝 / 枠連 / 馬連 / ワイド / 馬単 / 三連複 / 三連単** (すべて対応)
 - 海外開催場に **アスコット** を追加。ながし・マルチは中央・地方・海外すべてで指定可能
@@ -103,6 +104,12 @@ unsigned int GetBetInstanceWin5(const unsigned int unKingaku, const unsigned sho
                                   const char szKaime[], ST_BET_DATA_WIN5* pobjBetData);
 unsigned int BetWin5(const ST_BET_DATA_WIN5 objBetData, const unsigned short usWaitMilliSeconds = 500);
 
+// WIN5をセレクト/ランダムで購入する(買い目はサーバが生成する)
+unsigned int BetWin5Auto(const unsigned char ucMode, const char szAxisUmaban[],
+                          const unsigned short usBetCount, const unsigned int unKingaku,
+                          const unsigned short usYear, const unsigned char ucMonth,
+                          const unsigned char ucDay);
+
 // 自動入金フラグの設定
 unsigned int SetAutoDepositFlag(const bool bEnable, const unsigned int unDepositValue = 1000,
                                  const unsigned short usConfirmTimeout = 10000);
@@ -159,7 +166,7 @@ SetLogCallback(OnLog, LOG_LEVEL_INFO);   // 調査時は LOG_LEVEL_TRACE
 - 呼び出し規約は `__cdecl` です（C#: `[UnmanagedFunctionPointer(CallingConvention.Cdecl)]` /
   Python: `CFUNCTYPE` と `ctypes.CDLL`）。
 
-詳細は [`builds/関数仕様書.md`](builds/関数仕様書.md) の «5.18 SetLogCallback» を参照してください。
+詳細は [`builds/関数仕様書.md`](builds/関数仕様書.md) の «5.19 SetLogCallback» を参照してください。
 
 ---
 

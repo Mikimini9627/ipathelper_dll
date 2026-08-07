@@ -449,6 +449,10 @@ namespace IpatHelper_DotNetSampleApl
             internal static extern uint BetWin5(ST_BET_DATA_WIN5 objBetData, ushort usWaitMiliSeconds);
 
             [DllImport("IpatHelper.dll", CallingConvention = CallingConvention.Cdecl)]
+            internal static extern uint BetWin5Auto(byte ucMode, byte[] arybyAxisUmaban,
+                ushort usBetCount, uint unKingaku, ushort usYear, byte ucMonth, byte ucDay);
+
+            [DllImport("IpatHelper.dll", CallingConvention = CallingConvention.Cdecl)]
             internal static extern uint SetAutoDepositFlag([MarshalAs(UnmanagedType.I1)] bool bEnable, uint unDepositValue, ushort usConfrimTimeout);
 
             [DllImport("IpatHelper.dll", CallingConvention = CallingConvention.Cdecl)]
@@ -693,6 +697,39 @@ namespace IpatHelper_DotNetSampleApl
         public static uint BetWin5(ST_BET_DATA_WIN5 betData, ushort waitMiliSeconds = 1000)
         {
             return NativeMethods.BetWin5(betData, waitMiliSeconds);
+        }
+
+        /// <summary>
+        /// WIN5 の購入方式 (BetWin5Auto)
+        /// </summary>
+        public enum Win5AutoMode
+        {
+            /// <summary>セレクト: 軸馬を指定し、残りはサーバが選ぶ</summary>
+            Select = 2,
+            /// <summary>ランダム: すべてサーバが選ぶ</summary>
+            Random = 3,
+        }
+
+        /// <summary>
+        /// <para>WIN5 を「セレクト」または「ランダム」で購入する (中央競馬のみ)。</para>
+        /// <para>買い目はサーバが生成する。生成された買い目はそのまま購入されるため、
+        /// 内容を事前に確認する手段は無い。<b>実際に購入が行われる。</b></para>
+        /// </summary>
+        /// <param name="mode">購入方式</param>
+        /// <param name="axisUmaban">
+        /// セレクト時の軸馬番。5 レース分をカンマ区切りで指定する (例 "3,0,7,0,12")。
+        /// 0 のレースはサーバが選ぶ。<b>すべて 0 は指定できない</b>。ランダム時は無視される。
+        /// </param>
+        /// <param name="betCount">生成させる点数 (1〜50)</param>
+        /// <param name="kingaku">1 点あたりの購入金額 (円。100 円単位)</param>
+        /// <param name="kaisaibi">開催日</param>
+        public static uint BetWin5Auto(Win5AutoMode mode, string axisUmaban, uint betCount, uint kingaku, DateTime kaisaibi)
+        {
+            return NativeMethods.BetWin5Auto(
+                (byte)mode,
+                axisUmaban == null ? null : Encoding.UTF8.GetBytes(axisUmaban),
+                (ushort)betCount, kingaku,
+                (ushort)kaisaibi.Year, (byte)kaisaibi.Month, (byte)kaisaibi.Day);
         }
 
         /// <summary>

@@ -1167,6 +1167,40 @@ extern	"C" {
 	);
 
 	/// <summary>
+	/// WIN5の購入方式 (BetWin5Autoのucmode)
+	/// </summary>
+	enum WIN5_AUTO_MODE {
+		WIN5_AUTO_SELECT = 2,	///< セレクト: 軸馬を指定し、残りはサーバが選ぶ
+		WIN5_AUTO_RANDOM = 3	///< ランダム: すべてサーバが選ぶ
+	};
+
+	/// <summary>
+	/// <para>WIN5を「セレクト」または「ランダム」で購入します(中央競馬のみ)。</para>
+	/// <para>買い目を指定するBetWin5と違い、買い目はサーバが生成します。
+	/// 生成された買い目はそのまま購入されるため、内容を事前に確認することはできません。</para>
+	/// <para>実際に購入が行われます。呼び出す前に必ず利用者の確認を取ってください。</para>
+	/// </summary>
+	/// <param name="ucMode">購入方式(WIN5_AUTO_MODE)</param>
+	/// <param name="szAxisUmaban">
+	/// セレクト時の軸馬番。5レース分をカンマ区切りで指定します(例 "3,0,7,0,12")。
+	/// 0を指定したレースはサーバが選びます。ランダム時は無視されます(nullptr可)。
+	/// </param>
+	/// <param name="usBetCount">生成させる点数(1〜50)</param>
+	/// <param name="unKingaku">1点あたりの購入金額(円。100円単位)</param>
+	/// <param name="usYear">開催年</param>
+	/// <param name="ucMonth">開催月</param>
+	/// <param name="ucDay">開催日</param>
+	unsigned int IPAT_API BetWin5Auto(
+		const unsigned char ucMode,
+		const char szAxisUmaban[],
+		const unsigned short usBetCount,
+		const unsigned int unKingaku,
+		const unsigned short usYear,
+		const unsigned char ucMonth,
+		const unsigned char ucDay
+	);
+
+	/// <summary>
 	/// <para>自動入金設定を行います。</para>
 	/// <para>購入時に残高が不足している場合、自動で入金してから購入に移ります。</para>
 	/// <para>usConfirmTimeoutは残高反映待機のタイムアウト(ms)で、

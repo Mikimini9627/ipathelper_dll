@@ -101,6 +101,9 @@ DEFAULT_RETRY_COUNT = 10
 DEFAULT_WAIT_TIME = 1000
 DEFAULT_CONFIRM_TIMEOUT = 10000
 
+WIN5_AUTO_SELECT = 2    # WIN5 セレクト: 軸馬を指定し、残りはサーバが選ぶ
+WIN5_AUTO_RANDOM = 3    # WIN5 ランダム: すべてサーバが選ぶ
+
 LOG_LEVEL_TRACE = 0     # 詳細トレース。入出金失敗時の応答本文の抜粋はこのレベルのみ
 LOG_LEVEL_INFO = 1      # 情報(既定)
 LOG_LEVEL_WARN = 2      # 警告
@@ -252,6 +255,9 @@ def init():
 
     lib.BetWin5.restype = c_uint
     lib.BetWin5.argtypes = [ST_BET_DATA_WIN5, c_ushort]
+
+    lib.BetWin5Auto.restype = c_uint
+    lib.BetWin5Auto.argtypes = [c_byte, c_char_p, c_ushort, c_uint, c_ushort, c_byte, c_byte]
 
     lib.SetAutoDepositFlag.restype = c_uint
     lib.SetAutoDepositFlag.argtypes = [c_bool, c_ushort, c_ushort]
@@ -467,8 +473,28 @@ def bet_win5(betData : ST_BET_DATA_WIN5, waitMiliSeconds : int = DEFAULT_WAIT_TI
     '''
 
     global lib
-    
+
     return lib.BetWin5(betData, waitMiliSeconds)
+
+def bet_win5_auto(mode : int, axisUmaban : str, betCount : int, kingaku : int,
+                  year : int, month : int, day : int) -> int:
+    '''
+        WIN5を「セレクト」または「ランダム」で購入する(中央競馬のみ)
+
+        買い目はサーバが生成する。生成された買い目はそのまま購入されるため、
+        内容を事前に確認する手段は無い。実際に購入が行われる。
+
+        mode        : WIN5_AUTO_SELECT(2) / WIN5_AUTO_RANDOM(3)
+        axisUmaban  : セレクト時の軸馬番。5レース分をカンマ区切りで指定する(例 "3,0,7,0,12")。
+                      0のレースはサーバが選ぶ。すべて0は指定できない。ランダム時は None 可。
+        betCount    : 生成させる点数(1〜50)
+        kingaku     : 1点あたりの購入金額(円。100円単位)
+    '''
+
+    global lib
+
+    axis = axisUmaban.encode('utf-8') if axisUmaban else None
+    return lib.BetWin5Auto(mode, axis, betCount, kingaku, year, month, day)
 
 def set_auto_deposit_flag(enable : bool, depositValue : int, confirmTimeout : int = DEFAULT_CONFIRM_TIMEOUT) -> int:
     '''
