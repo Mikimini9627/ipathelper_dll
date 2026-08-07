@@ -317,9 +317,93 @@ namespace IpatHelper_DotNetSampleApl
         }
         #endregion
 
+        #region ログ
+        /// <summary>
+        /// ログレベル。SetLogCallback の minLevel に指定する。
+        /// </summary>
+        public enum LogLevel
+        {
+            /// <summary>詳細トレース。入出金失敗時の応答本文の抜粋はこのレベルでのみ通知される。</summary>
+            Trace = 0,
+            /// <summary>情報 (既定)</summary>
+            Info = 1,
+            /// <summary>警告</summary>
+            Warn = 2,
+            /// <summary>エラー。失敗した段階・画面ID・タイトルはこのレベルで通知される。</summary>
+            Error = 3,
+        }
+
+        /// <summary>
+        /// DLL 内部のログを受け取るハンドラ。
+        /// </summary>
+        /// <param name="level">ログレベル</param>
+        /// <param name="message">ログ本文 (UTF-8 からデコード済み)</param>
+        public delegate void LogHandler(LogLevel level, string message);
+
+        // ネイティブ側へ渡すデリゲートは GC されるとコールバック時にクラッシュするため、
+        // 静的フィールドで参照を保持する。
+        private static NativeMethods.LogCallback _nativeLogCallback;
+        private static LogHandler _logHandler;
+
+        /// <summary>
+        /// <para>DLL 内部のログを受け取るハンドラを登録する。null で解除。</para>
+        /// <para>入出金は erc/erm のようなエラーコードを返さないため、失敗の原因を知るには
+        /// このログが唯一の手掛かりになる。失敗した段階・画面ID・タイトルは
+        /// <see cref="LogLevel.Error"/> で通知されるが、サーバ側の拒否理由が載る
+        /// 応答本文の抜粋は <see cref="LogLevel.Trace"/> を指定したときのみ通知される。</para>
+        /// <para>注意: ハンドラは DLL 内部ロックを保持したまま呼ばれるため、
+        /// ハンドラ内から本クラスの API を呼び返さないこと (デッドロックする)。
+        /// また Login 中は中央・地方の 2 スレッドから同時に呼ばれる。</para>
+        /// <para>応答本文の抜粋には口座番号や残高が含まれ得るため、
+        /// Trace は調査時のみ指定し、ログの取り扱いに注意すること。</para>
+        /// </summary>
+        /// <param name="handler">ログハンドラ (null で解除)</param>
+        /// <param name="minLevel">通知する最小レベル</param>
+        public static void SetLogCallback(LogHandler handler, LogLevel minLevel = LogLevel.Info)
+        {
+            _logHandler = handler;
+
+            if (handler == null)
+            {
+                // 解除時は DLL 側が排他ロックを取るため、戻った時点で実行中の呼び出しは無い
+                NativeMethods.SetLogCallback(null, (int)minLevel);
+                _nativeLogCallback = null;
+                return;
+            }
+
+            _nativeLogCallback = (level, message) =>
+            {
+                // message は UTF-8 の null 終端文字列。既定のマーシャリング (ANSI) では
+                // 日本語が化けるため IntPtr で受けて明示的にデコードする。
+                string text = message == IntPtr.Zero ? string.Empty : PtrToStringUtf8(message);
+                try { _logHandler?.Invoke((LogLevel)level, text); }
+                catch { /* ハンドラ側の例外をネイティブへ伝播させない */ }
+            };
+            NativeMethods.SetLogCallback(_nativeLogCallback, (int)minLevel);
+        }
+
+        private static string PtrToStringUtf8(IntPtr ptr)
+        {
+            int len = 0;
+            while (Marshal.ReadByte(ptr, len) != 0) len++;
+            if (len == 0) return string.Empty;
+            byte[] buffer = new byte[len];
+            Marshal.Copy(ptr, buffer, 0, len);
+            return Encoding.UTF8.GetString(buffer);
+        }
+        #endregion
+
         #region 内部クラス
         private class NativeMethods
         {
+            // ネイティブ側の呼び出し規約は __cdecl。x86 では C# の既定 (Winapi=StdCall) と
+            // 異なるため明示が必須。
+            [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+            internal delegate void LogCallback(int nLevel, IntPtr pszMessage);
+
+            [DllImport("IpatHelper.dll", CallingConvention = CallingConvention.Cdecl)]
+            internal static extern void SetLogCallback(LogCallback callback, int nMinLevel);
+
             [DllImport("IpatHelper.dll", CallingConvention = CallingConvention.Cdecl)]
             internal static extern uint Login(byte[] arybyINetId, byte[] arybyId, byte[] arybyPassword, byte[] arybyPars);
 

@@ -101,6 +101,18 @@ DEFAULT_RETRY_COUNT = 10
 DEFAULT_WAIT_TIME = 1000
 DEFAULT_CONFIRM_TIMEOUT = 10000
 
+LOG_LEVEL_TRACE = 0     # 詳細トレース。入出金失敗時の応答本文の抜粋はこのレベルのみ
+LOG_LEVEL_INFO = 1      # 情報(既定)
+LOG_LEVEL_WARN = 2      # 警告
+LOG_LEVEL_ERROR = 3     # エラー。失敗した段階・画面ID・タイトルはこのレベル
+
+# ログコールバックの型。DLL 側は __cdecl のため CFUNCTYPE(WINFUNCTYPE ではない)。
+LOG_CALLBACK = CFUNCTYPE(None, c_int, c_char_p)
+
+# ネイティブへ渡したコールバックは GC されるとクラッシュするため参照を保持する
+_logCallbackRef = None
+_logHandler = None
+
 class ST_TICKET_DATA:
     def __init__(self):
         self.DayFlag = 0
@@ -205,7 +217,11 @@ def init():
     if libPath.exists() == False:
         return False
 
-    lib = windll.LoadLibrary(str(libPath))
+    # 公開関数はすべて __cdecl。WinDLL(=windll) は StdCall のため x86 で規約が食い違う。
+    lib = cdll.LoadLibrary(str(libPath))
+
+    lib.SetLogCallback.restype = None
+    lib.SetLogCallback.argtypes = [LOG_CALLBACK, c_int]
 
     lib.Login.restype = c_uint
     lib.Login.argtypes = [c_char_p, c_char_p, c_char_p, c_char_p]
@@ -266,6 +282,42 @@ def uninit():
     del lib
 
     windll.kernel32.FreeLibrary(libraryHandle)
+
+def set_log_callback(handler, minLevel : int = LOG_LEVEL_INFO) -> None:
+    '''
+        DLL内部のログを受け取るハンドラを登録する(Noneで解除)
+
+        handler は handler(level: int, message: str) の形で呼ばれる。
+        入出金は erc/erm のようなエラーコードを返さないため、失敗の原因を知るには
+        このログが唯一の手掛かりになる。失敗した段階・画面ID・タイトルは
+        LOG_LEVEL_ERROR で通知されるが、サーバ側の拒否理由が載る応答本文の抜粋は
+        LOG_LEVEL_TRACE を指定したときのみ通知される(口座番号や残高を含み得る)。
+
+        注意: ハンドラはDLL内部ロックを保持したまま呼ばれるため、
+        ハンドラ内から本モジュールのAPIを呼び返さないこと(デッドロックする)。
+        またログイン中は中央・地方の2スレッドから同時に呼ばれる。
+    '''
+
+    global lib, _logCallbackRef, _logHandler
+
+    _logHandler = handler
+
+    if handler is None:
+        # 解除時はDLL側が排他ロックを取るため、戻った時点で実行中の呼び出しは無い
+        lib.SetLogCallback(None, minLevel)
+        _logCallbackRef = None
+        return
+
+    def _onLog(level, message):
+        # message は UTF-8 の null 終端文字列
+        try:
+            text = message.decode('utf-8', 'replace') if message else ''
+            _logHandler(level, text)
+        except Exception:
+            pass    # ハンドラ側の例外をネイティブへ伝播させない
+
+    _logCallbackRef = LOG_CALLBACK(_onLog)
+    lib.SetLogCallback(_logCallbackRef, minLevel)
 
 def login(iNetId : str, id : str, password : str, pars : str) -> int:
     '''

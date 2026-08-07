@@ -120,6 +120,9 @@ void         ReleaseRaceCardData(ST_RACECARD_DATA* pobjRaceCard);
 // お知らせ取得(中央競馬・地方競馬に対応)
 unsigned int GetNotice(ST_NOTICE_DATA* pobjNotice);
 void         ReleaseNoticeData(ST_NOTICE_DATA* pobjNotice);
+
+// ログコールバックの登録(Releaseビルドでも取得可能。nullptrで解除)
+void         SetLogCallback(LogCallback callback, int nMinLevel);
 ```
 
 戻り値は `RETURN_VALUE` 列挙体のビットフラグです。
@@ -132,6 +135,31 @@ void         ReleaseNoticeData(ST_NOTICE_DATA* pobjNotice);
 | `FAILED_CHIHOU` | 地方競馬での処理失敗 |
 | `FAILED_COMMUNICATE_CHUOU` | 中央競馬との通信失敗 |
 | `FAILED_COMMUNICATE_CHIHOU` | 地方競馬との通信失敗 |
+
+### 🪵 ログの取得
+
+入出金はサーバレンダリングの HTML フォームのため `erc` / `erm` のようなエラーコードを返しません。
+**失敗の原因を知るには `SetLogCallback` が唯一の手段です。**
+
+```cpp
+void __cdecl OnLog(int nLevel, const char* pszMessage)
+{
+    static const char* aszLevel[] = { "TRACE", "INFO", "WARN", "ERROR" };
+    printf("[%s] %s\n", aszLevel[nLevel], pszMessage);  // pszMessage は UTF-8
+}
+
+SetLogCallback(OnLog, LOG_LEVEL_INFO);   // 調査時は LOG_LEVEL_TRACE
+```
+
+- 失敗した段階・画面 ID・画面タイトルは `LOG_LEVEL_ERROR` で通知されます。
+- **サーバ側の拒否理由が載る応答本文の抜粋は `LOG_LEVEL_TRACE` のときのみ**通知されます
+  （口座番号や残高を含み得るため、調査時のみ指定してください）。
+- コールバックは DLL 内部ロックを保持したまま呼ばれます。**内部から本 DLL の API を
+  呼び返さないでください**（デッドロックします）。
+- 呼び出し規約は `__cdecl` です（C#: `[UnmanagedFunctionPointer(CallingConvention.Cdecl)]` /
+  Python: `CFUNCTYPE` と `ctypes.CDLL`）。
+
+詳細は [`builds/関数仕様書.md`](builds/関数仕様書.md) の «5.18 SetLogCallback» を参照してください。
 
 ---
 

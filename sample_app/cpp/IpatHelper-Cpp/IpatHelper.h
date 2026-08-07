@@ -10,6 +10,40 @@ constexpr auto WIN5_RACE_COUNT				= 5;	// WIN5のレース数
 constexpr auto UMABAN_COLUMN_COUNT			= 3;	// フォーメーションでの列数
 constexpr auto UMABAN_TICKET_COLUMN_COUNT	= 5;	// フォーメーションでの列数(WIN5も含める)
 
+// 投票電文の金額フィールドは16進4桁のため、電文として表現できる金額には上限がある。
+// これは電文フォーマット側の不変条件で、実際に指定できる上限ではない(下記参照)。
+constexpr auto MAX_KINGAKU_UNIT				= 0xFFFF;					// 100円単位での上限
+constexpr auto MAX_KINGAKU_YEN				= MAX_KINGAKU_UNIT * 100;	// 6,553,500円
+
+// 1回の送信あたりの合計購入金額の上限(円)。I-PAT のフロントエンドが
+// CN_TOTALMONEYMAX として同じ値で検査しており、超過するとサーバに拒否される。
+// 1点でもこの上限が効くため、実際に指定できる1点あたりの金額上限もこの値になる
+// (MAX_KINGAKU_YEN には到達しない)。
+constexpr auto MAX_TOTAL_AMOUNT_PER_SEND	= 1000000;					// 1,000,000円
+
+// ---------------------------------------------------------------------------
+// 呼び出し規約
+//   公開関数・コールバックはすべて __cdecl。x64 では規約が1つのため差は出ないが、
+//   x86 版も配布しているため明示する (C# の [DllImport] 既定は Winapi=StdCall、
+//   Python の ctypes.WinDLL も StdCall のため、x86 では呼び出し側で Cdecl 指定が必須)。
+//     C#     : [DllImport("IpatHelper.dll", CallingConvention = CallingConvention.Cdecl)]
+//              [UnmanagedFunctionPointer(CallingConvention.Cdecl)]  // LogCallback 用
+//     Python : ctypes.CDLL("IpatHelper.dll")   (WinDLL ではない)
+// ---------------------------------------------------------------------------
+#ifndef IPAT_API
+#define IPAT_API __cdecl
+#endif
+
+// ---------------------------------------------------------------------------
+// スレッドと再入について
+//   通信を伴う公開関数は DLL 内部の単一ロックで直列化される。複数スレッドから同時に
+//   呼び出しても壊れないが、先行する呼び出しが完了するまでブロックする
+//   (投票・入出金は通信と残高反映待ちを含むため数分に及ぶことがある)。
+//   GetBetInstance / GetBetInstanceWin5 は通信もグローバル状態の参照も行わない
+//   純粋な入力変換のためロックを取らず、通信中でも並行して呼び出せる。
+//   例外は本 DLL の境界を越えない。内部で発生した例外は捕捉され UNSUCCESS になる。
+// ---------------------------------------------------------------------------
+
 #ifdef	__cplusplus
 extern	"C" {
 #endif
@@ -29,20 +63,27 @@ extern	"C" {
 	/// </summary>
 	/// <param name="nLevel">ログレベル (LOG_LEVEL)</param>
 	/// <param name="pszMessage">
-	/// ログ本文 (null 終端)。内部診断メッセージのため、文字コードは DLL の
-	/// ネイティブ ANSI (日本語環境では CP932)。C# では Encoding.GetEncoding(932) で
-	/// デコードしてください (応答データ本文の各 API は従来どおり UTF-8)。
+	/// ログ本文 (null 終端、UTF-8)。本 DLL は /utf-8 でコンパイルされるため、
+	/// ソース中の日本語メッセージは UTF-8 で渡されます。
+	/// C# では Encoding.UTF8 でデコードしてください (応答データ本文の各 API も UTF-8)。
 	/// </param>
-	typedef void (*LogCallback)(int nLevel, const char* pszMessage);
+	typedef void (IPAT_API *LogCallback)(int nLevel, const char* pszMessage);
 
 	/// <summary>
 	/// <para>ログコールバックを登録します。Release ビルドでもログを取得できます。</para>
 	/// <para>callback に nullptr を渡すと解除します。nMinLevel 未満のログは通知されません。</para>
 	/// <para>コールバック未登録時 (Release) はログ生成コスト自体が発生しません。</para>
+	/// <para>実装上の注意:</para>
+	/// <para>・コールバックは DLL 内部ロックを保持したまま呼ばれます。
+	/// コールバックから本 DLL の API を呼び返さないでください (デッドロックします)。</para>
+	/// <para>・Login 中は中央・地方の 2 スレッドから同時に呼ばれます。
+	/// スレッドセーフに実装してください。</para>
+	/// <para>・解除 (nullptr) の直後も、実行中の呼び出しが短時間残る可能性があります。
+	/// コールバック(C# ではデリゲート)の寿命は Logout 完了後まで保持してください。</para>
 	/// </summary>
 	/// <param name="callback">ログコールバック (nullptr で解除)</param>
 	/// <param name="nMinLevel">通知する最小レベル (LOG_LEVEL)</param>
-	void SetLogCallback(
+	void IPAT_API SetLogCallback(
 		LogCallback callback,
 		int         nMinLevel
 	);
@@ -518,7 +559,7 @@ extern	"C" {
 		unsigned char ucDayFlag;
 
 		/// <summary>
-		/// 受領No
+		/// 受付No
 		/// </summary>
 		unsigned char ucReceiptNo;
 
@@ -952,7 +993,7 @@ extern	"C" {
 	/// <param name="szPassword">パスワード</param>
 	/// <param name="szPars">P-ARS番号</param>
 	/// <returns></returns>
-	unsigned int Login(
+	unsigned int IPAT_API Login(
 		const char szINetId[],
 		const char szId[],
 		const char szPassword[],
@@ -963,7 +1004,7 @@ extern	"C" {
 	/// I-PATからログアウトします。
 	/// </summary>
 	/// <returns></returns>
-	unsigned int Logout(
+	unsigned int IPAT_API Logout(
 	);
 
 	/// <summary>
@@ -973,9 +1014,16 @@ extern	"C" {
 	/// <para>SetAutoDepositFlagのusConfirmTimeout(既定10000ms)以内に反映されない場合は失敗を返します。</para>
 	/// </summary>
 	/// <param name="unDepositValue">入金額</param>
-	/// <param name="usRetryCount">リトライ回数(入金指示まで。反映待機はリトライしません)</param>
+	/// <param name="usRetryCount">
+	/// <para>リトライ回数。適用されるのは入金実行電文を送信する前の準備段階
+	/// (口座セッションの確立・確認画面への遷移)のみです。</para>
+	/// <para>入金実行そのものは、応答を受信できなかった場合でもサーバ側で成立している
+	/// 可能性があるため再送しません(二重入金の防止)。この場合は残高への反映で成否を判定し、
+	/// 反映を確認できなければ失敗を返します。</para>
+	/// <para>1未満を指定した場合は1回として扱います。</para>
+	/// </param>
 	/// <returns></returns>
-	unsigned int Deposit(
+	unsigned int IPAT_API Deposit(
 		const unsigned int unDepositValue,
 		const unsigned short usRetryCount = DEFAULT_RETRY_COUNT
 	);
@@ -986,15 +1034,24 @@ extern	"C" {
 	/// 反映を確認できた場合のみ成功を返します。</para>
 	/// <para>SetAutoDepositFlagのusConfirmTimeout(既定10000ms)以内に反映されない場合は失敗を返します。</para>
 	/// </summary>
-	/// <param name="usRetryCount">リトライ回数(出金指示まで。反映待機はリトライしません)</param>
+	/// <param name="usRetryCount">
+	/// <para>リトライ回数。適用されるのは出金実行電文を送信する前の準備段階
+	/// (口座セッションの確立・確認画面への遷移)のみです。</para>
+	/// <para>出金実行そのものは、応答を受信できなかった場合でもサーバ側で成立している
+	/// 可能性があるため再送しません(二重出金の防止)。この場合は残高が0になったかで成否を
+	/// 判定し、確認できなければ失敗を返します。</para>
+	/// <para>1未満を指定した場合は1回として扱います。</para>
+	/// </param>
 	/// <returns></returns>
-	unsigned int Withdraw(
+	unsigned int IPAT_API Withdraw(
 		const unsigned short usRetryCount = DEFAULT_RETRY_COUNT
 	);
 
 	/// <summary>
 	/// <para>馬券購入履歴を取得します。</para>
 	/// <para>使用後は必ずReleasePurchaseDataを使用して解放してください。</para>
+	/// <para>同じ構造体を使い回す場合、次の取得前に必ずReleasePurchaseDataを呼んでください
+	/// (本関数は先頭で構造体をゼロ初期化するため、未解放のまま再取得するとリークします)。</para>
 	/// </summary>
 	/// <param name="pobjStatus">
 	/// <para>馬券購入履歴</para>
@@ -1017,7 +1074,7 @@ extern	"C" {
 	/// <para>    └─ST_TICKET_DATA_DETAIL[5]</para>
 	/// </param>
 	/// <returns></returns>
-	unsigned int GetPurchaseData(
+	unsigned int IPAT_API GetPurchaseData(
 		ST_PURCHASE_DATA* pobjStatus
 	);
 
@@ -1026,7 +1083,7 @@ extern	"C" {
 	/// <para>GetPurchaseDataの可否に依らず必ず実行してください。</para>
 	/// </summary>
 	/// <param name="objStatus">馬券購入履歴</param>
-	void ReleasePurchaseData(
+	void IPAT_API ReleasePurchaseData(
 		ST_PURCHASE_DATA* pobjStatus
 	);
 
@@ -1040,11 +1097,14 @@ extern	"C" {
 	/// <param name="ucDay">開催日</param>
 	/// <param name="ucHoushiki">方式</param>
 	/// <param name="ucShikibetsu">式別</param>
-	/// <param name="nKingaku">金額</param>
-	/// <param name="szKaime">買い目</param>
+	/// <param name="nKingaku">金額(100円以上MAX_KINGAKU_YEN以下、100円単位)</param>
+	/// <param name="szKaime">
+	/// <para>買い目。馬番は1〜18(海外は1〜24)の範囲で指定してください。</para>
+	/// <para>範囲外の馬番が含まれる場合は失敗します(黙って無視はしません)。</para>
+	/// </param>
 	/// <param name="pobjBetData">馬券購入情報</param>
 	/// <returns></returns>
-	unsigned int GetBetInstance(
+	unsigned int IPAT_API GetBetInstance(
 		const unsigned short usPlace,
 		const unsigned char ucRaceNo,
 		const unsigned short usYear,
@@ -1067,7 +1127,7 @@ extern	"C" {
 	/// <param name="usBetCount">配列数</param>
 	/// <param name="usWaitMilliseconds">馬券購入間隔(ms)</param>
 	/// <returns></returns>
-	unsigned int Bet(
+	unsigned int IPAT_API Bet(
 		const ST_BET_DATA pobjBetData[],
 		const unsigned short usBetCount,
 		const unsigned short usWaitMilliseconds = DEFAULT_BET_TIMEOUT
@@ -1076,14 +1136,14 @@ extern	"C" {
 	/// <summary>
 	/// 馬券購入情報(WIN5)を取得します。
 	/// </summary>
-	/// <param name="unKingaku">購入金額</param>
+	/// <param name="unKingaku">購入金額(100円以上MAX_KINGAKU_YEN以下、100円単位)</param>
 	/// <param name="usYear">開催年</param>
 	/// <param name="ucMonth">開催月</param>
 	/// <param name="ucDay">開催日</param>
-	/// <param name="szKaime">買い目</param>
+	/// <param name="szKaime">買い目(5レース分。馬番は1〜18)</param>
 	/// <param name="pobjBetData">馬券購入情報(WIN5)</param>
 	/// <returns></returns>
-	unsigned int GetBetInstanceWin5(
+	unsigned int IPAT_API GetBetInstanceWin5(
 		const unsigned int unKingaku,
 		const unsigned short usYear,
 		const unsigned char ucMonth,
@@ -1101,7 +1161,7 @@ extern	"C" {
 	/// <param name="objBetData">馬券購入情報(WIN5)</param>
 	/// <param name="usWaitMilliseconds">馬券購入間隔</param>
 	/// <returns></returns>
-	unsigned int BetWin5(
+	unsigned int IPAT_API BetWin5(
 		const ST_BET_DATA_WIN5 objBetData,
 		const unsigned short usWaitMilliseconds = DEFAULT_BET_TIMEOUT
 	);
@@ -1113,10 +1173,16 @@ extern	"C" {
 	/// Deposit/Withdrawの反映待機にも使用されます。</para>
 	/// </summary>
 	/// <param name="bEnable">有効にするかどうか</param>
-	/// <param name="unDepositValue">自動入金額</param>
+	/// <param name="unDepositValue">
+	/// <para>自動入金額(100円以上、100円単位)。bEnableがfalseの場合は検証しません。</para>
+	/// </param>
 	/// <param name="usConfirmTimeout">残高反映の確認タイムアウト(ms)</param>
 	/// <returns></returns>
-	unsigned int SetAutoDepositFlag(
+	/// <remarks>
+	/// bEnableはC++のbool(1バイト)です。C#では[MarshalAs(UnmanagedType.I1)]を指定してください
+	/// (C#のboolの既定マーシャリングは4バイトのBOOLのため)。
+	/// </remarks>
+	unsigned int IPAT_API SetAutoDepositFlag(
 		const bool bEnable,
 		const unsigned int unDepositValue = DEPOSIT_DEFAULT_VALUE,
 		const unsigned short usConfirmTimeout = DEFAULT_CONFIRM_TIMEOUT
@@ -1125,15 +1191,17 @@ extern	"C" {
 	/// <summary>
 	/// <para>指定レース・式別のオッズを取得します。</para>
 	/// <para>単勝・複勝は基本オッズ、枠連〜三連単は全通りのオッズ表を取得します。</para>
-	/// <para>中央競馬・地方競馬の両方に対応しています(海外は非対応)。</para>
+	/// <para>中央競馬・地方競馬・海外競馬に対応しています。</para>
+	/// <para>海外開催は中央競馬へのログインが必要です。また海外競馬に枠は無いため、
+	/// 枠連を指定するとUNSUCCESSを返します。</para>
 	/// <para>使用後は必ずReleaseOddsDataで解放してください。</para>
 	/// </summary>
 	/// <param name="usPlace">開催場(KAISAI)</param>
-	/// <param name="ucRaceNo">レース番号</param>
+	/// <param name="ucRaceNo">レース番号(1〜12)</param>
 	/// <param name="ucShikibetsu">式別(SHIKIBETSU)</param>
 	/// <param name="pobjOdds">オッズ情報</param>
 	/// <returns></returns>
-	unsigned int GetOdds(
+	unsigned int IPAT_API GetOdds(
 		const unsigned short usPlace,
 		const unsigned char ucRaceNo,
 		const unsigned char ucShikibetsu,
@@ -1145,22 +1213,26 @@ extern	"C" {
 	/// <para>GetOddsの可否に依らず必ず実行してください。</para>
 	/// </summary>
 	/// <param name="pobjOdds">オッズ情報</param>
-	void ReleaseOddsData(
+	void IPAT_API ReleaseOddsData(
 		ST_ODDS_DATA* pobjOdds
 	);
 
 	/// <summary>
 	/// <para>指定レースの出馬表を取得します。</para>
-	/// <para>中央競馬・地方競馬の両方に対応しています(海外は非対応)。</para>
+	/// <para>中央競馬・地方競馬・海外競馬に対応しています。</para>
 	/// <para>各出走馬の枠番・馬番・馬名・性齢・馬体重・騎手・斤量・調教師・
 	/// 単勝人気・単勝/複勝オッズを取得します。文字列はUTF-8で格納されます。</para>
+	/// <para>海外開催はI-PATが返す項目が異なり、取得できるのは
+	/// 馬番・馬名・単勝人気・単勝/複勝オッズのみです。枠番・性齢・馬体重・騎手・斤量・
+	/// 調教師・レース名は0または空文字になります。また海外開催は中央競馬への
+	/// ログインが必要です。</para>
 	/// <para>使用後は必ずReleaseRaceCardDataで解放してください。</para>
 	/// </summary>
 	/// <param name="usPlace">開催場(KAISAI)</param>
-	/// <param name="ucRaceNo">レース番号</param>
+	/// <param name="ucRaceNo">レース番号(1〜12)</param>
 	/// <param name="pobjRaceCard">出馬表情報</param>
 	/// <returns></returns>
-	unsigned int GetRaceCard(
+	unsigned int IPAT_API GetRaceCard(
 		const unsigned short usPlace,
 		const unsigned char ucRaceNo,
 		ST_RACECARD_DATA* pobjRaceCard
@@ -1171,7 +1243,7 @@ extern	"C" {
 	/// <para>GetRaceCardの可否に依らず必ず実行してください。</para>
 	/// </summary>
 	/// <param name="pobjRaceCard">出馬表情報</param>
-	void ReleaseRaceCardData(
+	void IPAT_API ReleaseRaceCardData(
 		ST_RACECARD_DATA* pobjRaceCard
 	);
 
@@ -1184,7 +1256,7 @@ extern	"C" {
 	/// </summary>
 	/// <param name="pobjNotice">お知らせ情報</param>
 	/// <returns></returns>
-	unsigned int GetNotice(
+	unsigned int IPAT_API GetNotice(
 		ST_NOTICE_DATA* pobjNotice
 	);
 
@@ -1193,7 +1265,7 @@ extern	"C" {
 	/// <para>GetNoticeの可否に依らず必ず実行してください。</para>
 	/// </summary>
 	/// <param name="pobjNotice">お知らせ情報</param>
-	void ReleaseNoticeData(
+	void IPAT_API ReleaseNoticeData(
 		ST_NOTICE_DATA* pobjNotice
 	);
 
