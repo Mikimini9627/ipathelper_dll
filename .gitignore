@@ -1,0 +1,37 @@
+# ビルド出力とエディタの一時ファイルのみを除外する。
+#
+# 注意: このリポジトリは配布物として x64/ x86/ 配下のバイナリを「追跡している」。
+#   builds/x{64,86}/                      ... IpatHelper.dll / .lib
+#   sample_app/*/x{64,86}/                ... 各サンプルへ配る IpatHelper.dll
+#   dll_test_app/x{64,86}/                ... .NET ランタイム一式を含むテストアプリ
+# そのため `x64/` `bin/` のような広いパターンは使えない。
+# 除外するディレクトリは必ずフルパスで名指しすること。
+
+# ---- エディタ / IDE ----
+.vs/
+*.user
+*.suo
+*.aps
+
+# ---- C++ サンプル (sample_app/cpp) ----
+# 実行ファイルは cpp/Release/ と cpp/x64/Release/、
+# 中間ファイルは IpatHelper-Cpp/Release/ と IpatHelper-Cpp/x64/Release/ へ出る。
+# IpatHelper-Cpp/x{64,86}/IpatHelper.dll は追跡対象なので巻き込まないこと。
+/sample_app/cpp/Debug/
+/sample_app/cpp/Release/
+/sample_app/cpp/x64/
+/sample_app/cpp/IpatHelper-Cpp/Debug/
+/sample_app/cpp/IpatHelper-Cpp/Release/
+/sample_app/cpp/IpatHelper-Cpp/x64/Debug/
+/sample_app/cpp/IpatHelper-Cpp/x64/Release/
+
+# ---- C# サンプル ----
+/sample_app/csharp/IpatHelper-CSharp/bin/
+/sample_app/csharp/IpatHelper-CSharp/obj/
+
+# ---- Java サンプル (Eclipse) ----
+/sample_app/java/bin/
+
+# ---- Python サンプル ----
+__pycache__/
+*.pyc

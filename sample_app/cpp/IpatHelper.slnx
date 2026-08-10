@@ -1,0 +1,9 @@
+<Solution>
+  <Configurations>
+    <BuildType Name="Debug" />
+    <BuildType Name="Release" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="IpatHelper-Cpp/IpatHelper-Cpp.vcxproj" Id="875c9aa2-e7c1-44df-8b0f-f35cd91b37e0" />
+</Solution>
