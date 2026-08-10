@@ -1,0 +1,9 @@
+<Solution>
+  <Configurations>
+    <BuildType Name="Debug" />
+    <BuildType Name="Release" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="IpatHelper-CSharp/IpatHelper-CSharp.csproj" Id="663e3df0-57ea-4143-84c8-47a9d8977472" />
+</Solution>
