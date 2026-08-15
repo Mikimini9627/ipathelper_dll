@@ -3,7 +3,10 @@
 
 constexpr auto DEPOSIT_DEFAULT_VALUE		= 1000;	// 自動入金のデフォルト値(円)
 constexpr auto DEFAULT_CONFIRM_TIMEOUT		= 10000;// 自動入金時のデフォルトタイムアウト(ms)
-constexpr auto DEFAULT_BET_TIMEOUT			= 500;	// 馬券購入間隔のデフォルト値(ms)
+constexpr auto DEFAULT_BET_INTERVAL			= 500;	// 馬券購入(分割送信)の間隔のデフォルト値(ms)
+// 旧名。実体はタイムアウトではなく分割送信の「間隔」のため DEFAULT_BET_INTERVAL へ改名した。
+// 既存の呼び出し元がソース互換を保てるようエイリアスとして残す(新規コードでは使わないこと)。
+constexpr auto DEFAULT_BET_TIMEOUT			= DEFAULT_BET_INTERVAL;
 constexpr auto DEFAULT_RETRY_COUNT			= 10;	// 入出金処理のデフォルトリトライ回数
 
 constexpr auto WIN5_RACE_COUNT				= 5;	// WIN5のレース数
@@ -20,6 +23,13 @@ constexpr auto MAX_KINGAKU_YEN				= MAX_KINGAKU_UNIT * 100;	// 6,553,500円
 // 1点でもこの上限が効くため、実際に指定できる1点あたりの金額上限もこの値になる
 // (MAX_KINGAKU_YEN には到達しない)。
 constexpr auto MAX_TOTAL_AMOUNT_PER_SEND	= 1000000;					// 1,000,000円
+
+// ST_RACECARD_DATA::ucRaceStatus の値 (I-PAT の開催メニュー jg[6] と同じ意味)。
+constexpr unsigned char RACE_STATUS_ON_SALE		= 0;	// 発売中
+constexpr unsigned char RACE_STATUS_CLOSED		= 1;	// 発売終了
+constexpr unsigned char RACE_STATUS_CANCELED	= 2;	// 発売中止
+constexpr unsigned char RACE_STATUS_BEFORE_SALE	= 3;	// 発売前
+constexpr unsigned char RACE_STATUS_UNKNOWN		= 0xFF;	// 取得できなかった
 
 // ---------------------------------------------------------------------------
 // 呼び出し規約
@@ -442,7 +452,18 @@ extern	"C" {
 		/// <summary>
 		/// 三連単
 		/// </summary>
-		TRIFECTA
+		TRIFECTA,
+
+		/// <summary>
+		/// <para>応援馬券 (同一馬の単勝＋複勝のセット)。方式は通常(NORMAL)・馬番1頭のみ。</para>
+		/// <para>I-PAT の投票電文に応援馬券という式別は存在せず、フロントエンドと同様に
+		/// 本 DLL が送信時へ単勝(WIN)と複勝(PLACE)の2点へ展開する。そのため
+		/// 購入履歴には単勝と複勝が別々の馬券として現れる。</para>
+		/// <para>合計購入金額は指定金額の<b>2倍</b>になる (100円指定 = 単勝100円 + 複勝100円)。
+		/// 点数も2点として数える。</para>
+		/// <para>オッズ取得(GetOdds)ではこの式別を指定できない (単勝・複勝を個別に取得すること)。</para>
+		/// </summary>
+		WINPLACE
 	};
 
 	/// <summary>
@@ -494,7 +515,21 @@ extern	"C" {
 		/// <summary>
 		/// 地方競馬での通信に失敗(IPATレスポンスエラー)
 		/// </summary>
-		FAILED_COMMUNICATE_CHIHOU = 0b00100000
+		FAILED_COMMUNICATE_CHIHOU = 0b00100000,
+
+		/// <summary>
+		/// <para>サービス時間外(ログインフォームが提供されていない)</para>
+		/// <para>ログインページ自体は受信できたにもかかわらず、ログインに必要な要素が</para>
+		/// <para>含まれていなかった場合に、FAILED_CHUOU / FAILED_CHIHOU と併せて立ちます。</para>
+		/// <para>最も多い原因は投票受付時間外です(特に地方競馬は営業時間外に必ずこの状態に</para>
+		/// <para>なります)。メンテナンス中も同じ状態になり得るため、両者は区別できません。</para>
+		/// <para>「時刻を見て事前に弾く」処理は本 DLL には入れていません。JRA の発売時間は</para>
+		/// <para>季節や開催により変動するため、DLL に時刻表を持たせるとサーバ側の変更に</para>
+		/// <para>追随できず、正しい時間帯なのに拒否する状態になり得るためです。</para>
+		/// <para>このフラグが立った場合、呼び出し側はリトライせず時間をおいて再試行してください</para>
+		/// <para>(ID・パスワード誤りや通信障害とは異なり、即座の再試行は必ず失敗します)。</para>
+		/// </summary>
+		FAILED_OUT_OF_SERVICE = 0b01000000
 	};
 
 	/// <summary>
@@ -921,6 +956,19 @@ extern	"C" {
 		/// レース名(UTF-8)。開催メニュー(ri)から取得。取得できない場合は空文字。
 		/// </summary>
 		char szRaceName[128];
+
+		/// <summary>
+		/// <para>発売締切時刻 "HH:MM"。開催メニュー(jg)から取得。</para>
+		/// <para>取得できない場合は空文字(該当レースが開催メニューに無いときなど)。</para>
+		/// </summary>
+		char szDeadline[8];
+
+		/// <summary>
+		/// <para>レースの発売状態(0:発売中 1:発売終了 2:発売中止 3:発売前)。</para>
+		/// <para>開催メニュー(jg)から取得。取得できない場合は 0xFF。
+		/// 締切時刻だけでは「もう買えないのか」が判断できないため併せて返す。</para>
+		/// </summary>
+		unsigned char ucRaceStatus;
 	};
 
 	/// <summary>
@@ -1012,6 +1060,11 @@ extern	"C" {
 	/// <para>入金指示の完了後、入金額が残高へ加算されたことを確認できるまで待機し、
 	/// 反映を確認できた場合のみ成功を返します。</para>
 	/// <para>SetAutoDepositFlagのusConfirmTimeout(既定10000ms)以内に反映されない場合は失敗を返します。</para>
+	/// <para><b>PayPay(コード決済アプリ)を登録口座にしている会員は利用できません。</b>
+	/// 通信を行わずUNSUCCESSを返します。PayPayの入金はPayPayアプリ側の決済承認
+	/// (署名付きトークン)を伴い、本DLLはそれに対応していないためです。
+	/// 入金はPayPayアプリ側で操作してください。
+	/// PayPay<b>銀行</b>は従来どおり利用できます(別物です)。</para>
 	/// </summary>
 	/// <param name="unDepositValue">入金額</param>
 	/// <param name="usRetryCount">
@@ -1033,6 +1086,12 @@ extern	"C" {
 	/// <para>出金指示の完了後、残高が0になったことを確認できるまで待機し、
 	/// 反映を確認できた場合のみ成功を返します。</para>
 	/// <para>SetAutoDepositFlagのusConfirmTimeout(既定10000ms)以内に反映されない場合は失敗を返します。</para>
+	/// <para><b>PayPay(コード決済アプリ)を登録口座にしている会員は利用できません。</b>
+	/// 通信を行わずUNSUCCESSを返します。
+	/// <b>出金の電文自体は銀行と同一で、技術的には実行できることを実測で確認しています。</b>
+	/// それでも対応しないのは、入金だけできない口座を中途半端に扱うより、
+	/// 口座ごと非対応とする方が分かりやすいという方針判断です。
+	/// PayPay<b>銀行</b>は従来どおり利用できます。</para>
 	/// </summary>
 	/// <param name="usRetryCount">
 	/// <para>リトライ回数。適用されるのは出金実行電文を送信する前の準備段階
@@ -1125,12 +1184,12 @@ extern	"C" {
 	/// </summary>
 	/// <param name="pobjBetData">馬券購入情報(配列)</param>
 	/// <param name="usBetCount">配列数</param>
-	/// <param name="usWaitMilliseconds">馬券購入間隔(ms)</param>
+	/// <param name="usWaitMilliseconds">分割送信の間隔(ms)。タイムアウトではない</param>
 	/// <returns></returns>
 	unsigned int IPAT_API Bet(
 		const ST_BET_DATA pobjBetData[],
 		const unsigned short usBetCount,
-		const unsigned short usWaitMilliseconds = DEFAULT_BET_TIMEOUT
+		const unsigned short usWaitMilliseconds = DEFAULT_BET_INTERVAL
 	);
 
 	/// <summary>
@@ -1159,11 +1218,11 @@ extern	"C" {
 	/// <para>ネットワーク環境によって間隔は異なりますが、usWaitMillisecondsに任意の数値を指定することで調整が可能です。</para>
 	/// </summary>
 	/// <param name="objBetData">馬券購入情報(WIN5)</param>
-	/// <param name="usWaitMilliseconds">馬券購入間隔</param>
+	/// <param name="usWaitMilliseconds">分割送信の間隔(ms)。タイムアウトではない</param>
 	/// <returns></returns>
 	unsigned int IPAT_API BetWin5(
 		const ST_BET_DATA_WIN5 objBetData,
-		const unsigned short usWaitMilliseconds = DEFAULT_BET_TIMEOUT
+		const unsigned short usWaitMilliseconds = DEFAULT_BET_INTERVAL
 	);
 
 	/// <summary>

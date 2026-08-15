@@ -38,6 +38,7 @@ def main():
         returnValue = get_race_card(KAISAI_TOKYO, 11, raceCard)
         if (returnValue & 1) == 1:
             print("レース名: " + raceCard.RaceName)
+            print("締切: " + raceCard.Deadline + " / 発売状態: " + str(raceCard.RaceStatus))
             print("オッズ更新時刻: " + raceCard.OddsTime + " / 出走頭数: " + str(raceCard.EntryCount))
             for entry in raceCard.EntryData:
                 name = entry.HorseName.decode('utf-8')
