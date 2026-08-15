@@ -52,6 +52,7 @@ public class Program {
 		returnValue = iPatHelper.GetRaceCard(IpatHelper.Kaisai.KAISAI_TOKYO, 11, raceCard);
 		if((returnValue & 1) == 1) {
 			System.out.println("レース名: " + raceCard.raceName);
+			System.out.println("締切: " + raceCard.deadline + " / 発売状態: " + raceCard.raceStatus);
 			System.out.println("オッズ更新時刻: " + raceCard.oddsTime + " / 出走頭数: " + raceCard.entryCount);
 			for (IpatHelper.ST_ENTRY_DETAIL entry : raceCard.entries) {
 				String name = IpatHelper.Utf8ToString(entry.horseName);

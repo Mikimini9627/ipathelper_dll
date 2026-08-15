@@ -107,6 +107,16 @@ public class IpatHelper {
 		public static final int ODDS_STATUS_UNACQUIRED = 2;
 	}
 
+	//レースの発売状態 (ST_RACECARD_DATA.raceStatus。開催メニュー jg 由来)
+	//UNKNOWN が 0 でないのは、0 が「発売中」でありゼロ初期化と区別する必要があるため。
+	public class RaceStatus{
+		public static final byte RACE_STATUS_ON_SALE = 0;
+		public static final byte RACE_STATUS_CLOSED = 1;
+		public static final byte RACE_STATUS_CANCELED = 2;
+		public static final byte RACE_STATUS_BEFORE_SALE = 3;
+		public static final byte RACE_STATUS_UNKNOWN = (byte)0xFF;
+	}
+
 	//馬券購入日タイプ
 	public class DayType{
 		public static final int DAYTYPE_TODAY = 1;
@@ -575,7 +585,7 @@ public class IpatHelper {
 
 		@Override
         protected List<String> getFieldOrder() {
-            return Arrays.asList("place", "raceNo", "oddsTime", "entryCount", "entryData", "raceName");
+            return Arrays.asList("place", "raceNo", "oddsTime", "entryCount", "entryData", "raceName", "deadline", "raceStatus");
         }
 
 		public short place;
@@ -584,6 +594,11 @@ public class IpatHelper {
 		public int entryCount;
 		public Pointer entryData;
 		public byte[] raceName;
+		// ネイティブ側の ST_RACECARD_DATA へ後から追加されたフィールド。
+		// この構造体はネイティブ側が直接書き込む領域のため、
+		// 順序・型 (getFieldOrder 含む) が DLL 側と一致していないとメモリ破壊になる。
+		public byte[] deadline;
+		public byte raceStatus;
 
 		public ST_RACECARD_DATA_INTERNAL() {
 			place = 0;
@@ -592,6 +607,8 @@ public class IpatHelper {
 			entryCount = 0;
 			entryData = null;
 			raceName = new byte[128];
+			deadline = new byte[8];
+			raceStatus = RaceStatus.RACE_STATUS_UNKNOWN;
 		}
 
 		// ポインタ渡し用の ByReference 内部クラス
@@ -607,6 +624,8 @@ public class IpatHelper {
 		public int entryCount;
 		public ST_ENTRY_DETAIL[] entries;
 		public String raceName;
+		public String deadline;   // 発売締切時刻 "HH:MM"(取得不可時は空文字)
+		public byte raceStatus;   // 発売状態 (RACE_STATUS_*)
 
 		public ST_RACECARD_DATA() {
 			place = 0;
@@ -615,6 +634,8 @@ public class IpatHelper {
 			entryCount = 0;
 			entries = null;
 			raceName = "";
+			deadline = "";
+			raceStatus = RaceStatus.RACE_STATUS_UNKNOWN;
 		}
 	}
 
@@ -813,6 +834,9 @@ public class IpatHelper {
 		raceCard.entries = new ST_ENTRY_DETAIL[Math.max(tempRaceCard.entryCount, 0)];
 		// レース名はUTF-8のため専用ヘルパーで変換する(oddsTimeはascii)
 		raceCard.raceName = Utf8ToString(tempRaceCard.raceName);
+		// 発売締切時刻("HH:MM")と発売状態。開催メニュー(jg)由来で海外開催でも取得できる
+		raceCard.deadline = ByteArrayToString(tempRaceCard.deadline);
+		raceCard.raceStatus = tempRaceCard.raceStatus;
 
 		// 取得失敗・明細なしはここで解放して戻る
 		if ((returnValue & 1) != 1 || tempRaceCard.entryCount <= 0 || tempRaceCard.entryData == null) {

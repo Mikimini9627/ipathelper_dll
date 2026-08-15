@@ -31,6 +31,7 @@ namespace IpatHelper_DotNetSampleApl
             if ((returnValue & 1) == 1)
             {
                 Console.WriteLine($"Race Name: {raceCard.raceName}");
+                Console.WriteLine($"Deadline: {raceCard.deadline} / Status: {raceCard.raceStatus}");
                 Console.WriteLine($"Odds Time: {raceCard.oddsTime} / Entries: {raceCard.entryCount}");
                 foreach (var entry in raceCard.entries)
                 {

@@ -63,6 +63,14 @@ ODDS_STATUS_NORMAL = 0
 ODDS_STATUS_CANCEL = 1
 ODDS_STATUS_UNACQUIRED = 2
 
+# ST_RACECARD_DATA.RaceStatus の値(開催メニュー jg 由来)
+# UNKNOWN が 0 でないのは、0 が「発売中」でありゼロ初期化と区別する必要があるため。
+RACE_STATUS_ON_SALE = 0         # 発売中
+RACE_STATUS_CLOSED = 1          # 発売終了
+RACE_STATUS_CANCELED = 2        # 発売中止
+RACE_STATUS_BEFORE_SALE = 3     # 発売前
+RACE_STATUS_UNKNOWN = 0xFF      # 取得できなかった
+
 DAYTYPE_TODAY = 1
 DAYTYPE_BEFORE = 2
 
@@ -154,6 +162,8 @@ class ST_RACECARD_DATA:
         self.EntryCount = 0
         self.EntryData = []
         self.RaceName = ""
+        self.Deadline = ""                       # 発売締切時刻 "HH:MM"(取得不可時は空文字)
+        self.RaceStatus = RACE_STATUS_UNKNOWN    # 発売状態(RACE_STATUS_*)
 
 #構造体マーシャリング用クラス
 class ST_TICKET_DATA_DETAIL(Structure):
@@ -198,8 +208,11 @@ class ST_ENTRY_DETAIL(Structure):
 
 class ST_RACECARD_DATA_INTERNAL(Structure):
     # RaceName(レース名, UTF-8のbytes)はネイティブ側構造体の末尾に追加されている
+    # Deadline(発売締切時刻) と RaceStatus(発売状態) も同様に末尾へ追加されている。
+    # ネイティブ側が直接書き込む領域のため、順序・型が DLL 側と一致していないとメモリ破壊になる。
     _fields_ = [("Place", c_ushort), ("RaceNo", c_byte), ("OddsTime", c_char * 8), \
-        ("EntryCount", c_uint), ("EntryData", c_void_p), ("RaceName", c_char * 128)]
+        ("EntryCount", c_uint), ("EntryData", c_void_p), ("RaceName", c_char * 128), \
+        ("Deadline", c_char * 8), ("RaceStatus", c_ubyte)]
 
 def init():
     '''
@@ -573,6 +586,9 @@ def get_race_card(place : int, raceNo : int, raceCard : ST_RACECARD_DATA) -> int
     raceCard.EntryCount = tempRaceCardData.EntryCount
     # レース名はUTF-8のbytesのためutf-8でデコードする
     raceCard.RaceName = tempRaceCardData.RaceName.decode('utf-8', errors='ignore')
+    # 発売締切時刻("HH:MM")と発売状態。開催メニュー(jg)由来で、海外開催でも取得できる
+    raceCard.Deadline = tempRaceCardData.Deadline.decode('ascii', errors='ignore')
+    raceCard.RaceStatus = tempRaceCardData.RaceStatus
 
     # 取得失敗・明細なしはここで解放して戻る
     if (returnValue & 1) != 1 or tempRaceCardData.EntryCount <= 0 or not tempRaceCardData.EntryData:
