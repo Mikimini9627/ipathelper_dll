@@ -32,6 +32,7 @@ namespace IpatHelper_DotNetSampleApl
             {
                 Console.WriteLine($"Race Name: {raceCard.raceName}");
                 Console.WriteLine($"Deadline: {raceCard.deadline} / Status: {raceCard.raceStatus}");
+                Console.WriteLine($"Grade: {raceCard.grade} / No: {raceCard.raceNumber}");
                 Console.WriteLine($"Odds Time: {raceCard.oddsTime} / Entries: {raceCard.entryCount}");
                 foreach (var entry in raceCard.entries)
                 {

@@ -585,7 +585,7 @@ public class IpatHelper {
 
 		@Override
         protected List<String> getFieldOrder() {
-            return Arrays.asList("place", "raceNo", "oddsTime", "entryCount", "entryData", "raceName", "deadline", "raceStatus");
+            return Arrays.asList("place", "raceNo", "oddsTime", "entryCount", "entryData", "raceName", "deadline", "raceStatus", "grade", "raceNumber");
         }
 
 		public short place;
@@ -599,6 +599,8 @@ public class IpatHelper {
 		// 順序・型 (getFieldOrder 含む) が DLL 側と一致していないとメモリ破壊になる。
 		public byte[] deadline;
 		public byte raceStatus;
+		public byte[] grade;
+		public short raceNumber;
 
 		public ST_RACECARD_DATA_INTERNAL() {
 			place = 0;
@@ -609,6 +611,8 @@ public class IpatHelper {
 			raceName = new byte[128];
 			deadline = new byte[8];
 			raceStatus = RaceStatus.RACE_STATUS_UNKNOWN;
+			grade = new byte[16];
+			raceNumber = 0;
 		}
 
 		// ポインタ渡し用の ByReference 内部クラス
@@ -626,6 +630,8 @@ public class IpatHelper {
 		public String raceName;
 		public String deadline;   // 発売締切時刻 "HH:MM"(取得不可時は空文字)
 		public byte raceStatus;   // 発売状態 (RACE_STATUS_*)
+		public String grade;      // グレード "GI"/"J・GI"/"L" 等(重賞でなければ空文字)
+		public short raceNumber;  // 開催回数(「第30回」の 30)
 
 		public ST_RACECARD_DATA() {
 			place = 0;
@@ -636,6 +642,8 @@ public class IpatHelper {
 			raceName = "";
 			deadline = "";
 			raceStatus = RaceStatus.RACE_STATUS_UNKNOWN;
+			grade = "";
+			raceNumber = 0;
 		}
 	}
 
@@ -837,6 +845,9 @@ public class IpatHelper {
 		// 発売締切時刻("HH:MM")と発売状態。開催メニュー(jg)由来で海外開催でも取得できる
 		raceCard.deadline = ByteArrayToString(tempRaceCard.deadline);
 		raceCard.raceStatus = tempRaceCard.raceStatus;
+		// グレードはUTF-8(「J・GI」に多バイト文字を含む)。開催回数は「第30回」の 30
+		raceCard.grade = Utf8ToString(tempRaceCard.grade);
+		raceCard.raceNumber = tempRaceCard.raceNumber;
 
 		// 取得失敗・明細なしはここで解放して戻る
 		if ((returnValue & 1) != 1 || tempRaceCard.entryCount <= 0 || tempRaceCard.entryData == null) {
