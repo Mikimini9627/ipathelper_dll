@@ -46,6 +46,7 @@ int main()
 	if ((unReturn & 1) == 1) {
 		cout << "Race Name: " << objRaceCard.szRaceName << endl;
 		cout << "Deadline: " << objRaceCard.szDeadline << " / Status: " << (int)objRaceCard.ucRaceStatus << endl;
+		cout << "Grade: " << objRaceCard.szGrade << " / No: " << objRaceCard.usRaceNumber << endl;
 		cout << "Odds Time: " << objRaceCard.szOddsTime << " / Entries: " << objRaceCard.unEntryCount << endl;
 		for (unsigned int i = 0; i < objRaceCard.unEntryCount; i++) {
 			const ST_ENTRY_DETAIL& entry = objRaceCard.pobjEntry[i];

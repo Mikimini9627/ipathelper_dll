@@ -197,6 +197,9 @@ namespace IpatHelper_DotNetSampleApl
             [MarshalAs(UnmanagedType.ByValArray, SizeConst = 8)]
             public byte[] szDeadline;
             public byte ucRaceStatus;
+            [MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)]
+            public byte[] szGrade;
+            public ushort usRaceNumber;
         }
 
         public struct ST_RACECARD_DATA
@@ -209,6 +212,8 @@ namespace IpatHelper_DotNetSampleApl
             public string raceName;
             public string deadline;         // 発売締切時刻 "HH:MM"(取得不可時は空文字)
             public RACE_STATUS raceStatus;  // 発売状態
+            public string grade;            // グレード "GI"/"J・GI"/"L" 等(重賞でなければ空文字)
+            public ushort raceNumber;       // 開催回数(「第30回」の 30)
         };
         #endregion
 
@@ -836,7 +841,9 @@ namespace IpatHelper_DotNetSampleApl
                 pobjEntry = IntPtr.Zero,
                 szRaceName = new byte[128],
                 szDeadline = new byte[8],
-                ucRaceStatus = (byte)RACE_STATUS.UNKNOWN
+                ucRaceStatus = (byte)RACE_STATUS.UNKNOWN,
+                szGrade = new byte[16],
+                usRaceNumber = 0
             };
 
             uint returnValue = NativeMethods.GetRaceCard((ushort)place, raceNo, ref tempRaceCardData);
@@ -850,7 +857,9 @@ namespace IpatHelper_DotNetSampleApl
                 entries = Array.Empty<ST_ENTRY_DETAIL>(),
                 raceName = DecodeUtf8(tempRaceCardData.szRaceName),
                 deadline = DecodeUtf8(tempRaceCardData.szDeadline),
-                raceStatus = (RACE_STATUS)tempRaceCardData.ucRaceStatus
+                raceStatus = (RACE_STATUS)tempRaceCardData.ucRaceStatus,
+                grade = DecodeUtf8(tempRaceCardData.szGrade),
+                raceNumber = tempRaceCardData.usRaceNumber
             };
 
             // 取得失敗、または明細が無い場合はここで解放して戻る

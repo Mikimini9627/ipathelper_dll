@@ -164,6 +164,8 @@ class ST_RACECARD_DATA:
         self.RaceName = ""
         self.Deadline = ""                       # 発売締切時刻 "HH:MM"(取得不可時は空文字)
         self.RaceStatus = RACE_STATUS_UNKNOWN    # 発売状態(RACE_STATUS_*)
+        self.Grade = ""                          # グレード "GI"/"J・GI"/"L" 等(重賞でなければ空文字)
+        self.RaceNumber = 0                      # 開催回数(「第30回」の 30)
 
 #構造体マーシャリング用クラス
 class ST_TICKET_DATA_DETAIL(Structure):
@@ -208,11 +210,13 @@ class ST_ENTRY_DETAIL(Structure):
 
 class ST_RACECARD_DATA_INTERNAL(Structure):
     # RaceName(レース名, UTF-8のbytes)はネイティブ側構造体の末尾に追加されている
-    # Deadline(発売締切時刻) と RaceStatus(発売状態) も同様に末尾へ追加されている。
+    # Deadline(発売締切時刻)/RaceStatus(発売状態)/Grade(グレード)/RaceNumber(開催回数) も
+    # 同様に末尾へ追加されている。
     # ネイティブ側が直接書き込む領域のため、順序・型が DLL 側と一致していないとメモリ破壊になる。
     _fields_ = [("Place", c_ushort), ("RaceNo", c_byte), ("OddsTime", c_char * 8), \
         ("EntryCount", c_uint), ("EntryData", c_void_p), ("RaceName", c_char * 128), \
-        ("Deadline", c_char * 8), ("RaceStatus", c_ubyte)]
+        ("Deadline", c_char * 8), ("RaceStatus", c_ubyte), \
+        ("Grade", c_char * 16), ("RaceNumber", c_ushort)]
 
 def init():
     '''
@@ -589,6 +593,9 @@ def get_race_card(place : int, raceNo : int, raceCard : ST_RACECARD_DATA) -> int
     # 発売締切時刻("HH:MM")と発売状態。開催メニュー(jg)由来で、海外開催でも取得できる
     raceCard.Deadline = tempRaceCardData.Deadline.decode('ascii', errors='ignore')
     raceCard.RaceStatus = tempRaceCardData.RaceStatus
+    # グレードはUTF-8のbytes(「J・GI」に多バイト文字を含む)
+    raceCard.Grade = tempRaceCardData.Grade.decode("utf-8", errors="ignore")
+    raceCard.RaceNumber = tempRaceCardData.RaceNumber
 
     # 取得失敗・明細なしはここで解放して戻る
     if (returnValue & 1) != 1 or tempRaceCardData.EntryCount <= 0 or not tempRaceCardData.EntryData:

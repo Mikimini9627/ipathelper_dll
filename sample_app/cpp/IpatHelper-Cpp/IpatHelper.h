@@ -969,6 +969,19 @@ extern	"C" {
 		/// 締切時刻だけでは「もう買えないのか」が判断できないため併せて返す。</para>
 		/// </summary>
 		unsigned char ucRaceStatus;
+
+		/// <summary>
+		/// <para>グレード(UTF-8)。"GI" / "GII" / "GIII" / "J・GI" / "J・GII" / "J・GIII" / "L"。</para>
+		/// <para>開催メニュー(rn)から取得。重賞でない場合と取得できない場合は空文字。
+		/// 海外開催は "GI"〜"GIII" のみ返る(I-PAT 側が J・G* / L を返さない)。</para>
+		/// </summary>
+		char szGrade[16];
+
+		/// <summary>
+		/// <para>そのレースの開催回数(「第30回」の 30)。</para>
+		/// <para>開催メニュー(rn)から取得。取得できない場合は 0。</para>
+		/// </summary>
+		unsigned short usRaceNumber;
 	};
 
 	/// <summary>
