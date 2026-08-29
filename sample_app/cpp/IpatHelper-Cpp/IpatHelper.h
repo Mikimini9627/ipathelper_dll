@@ -1,6 +1,10 @@
 ﻿#ifndef IPAT_HELPER_H
 #define IPAT_HELPER_H
 
+#ifdef __cplusplus
+#include <cstddef>	// offsetof (末尾の ABI レイアウト検査で使用)
+#endif
+
 constexpr auto DEPOSIT_DEFAULT_VALUE		= 1000;	// 自動入金のデフォルト値(円)
 constexpr auto DEFAULT_CONFIRM_TIMEOUT		= 10000;// 自動入金時のデフォルトタイムアウト(ms)
 constexpr auto DEFAULT_BET_INTERVAL			= 500;	// 馬券購入(分割送信)の間隔のデフォルト値(ms)
@@ -13,15 +17,14 @@ constexpr auto WIN5_RACE_COUNT				= 5;	// WIN5のレース数
 constexpr auto UMABAN_COLUMN_COUNT			= 3;	// フォーメーションでの列数
 constexpr auto UMABAN_TICKET_COLUMN_COUNT	= 5;	// フォーメーションでの列数(WIN5も含める)
 
-// 投票電文の金額フィールドは16進4桁のため、電文として表現できる金額には上限がある。
-// これは電文フォーマット側の不変条件で、実際に指定できる上限ではない(下記参照)。
+// 馬券1点の金額としてI-PATが表現できる上限。
+// 実際に指定できる上限は下記 MAX_TOTAL_AMOUNT_PER_SEND のほうが小さい。
 constexpr auto MAX_KINGAKU_UNIT				= 0xFFFF;					// 100円単位での上限
 constexpr auto MAX_KINGAKU_YEN				= MAX_KINGAKU_UNIT * 100;	// 6,553,500円
 
-// 1回の送信あたりの合計購入金額の上限(円)。I-PAT のフロントエンドが
-// CN_TOTALMONEYMAX として同じ値で検査しており、超過するとサーバに拒否される。
-// 1点でもこの上限が効くため、実際に指定できる1点あたりの金額上限もこの値になる
-// (MAX_KINGAKU_YEN には到達しない)。
+// 1回の送信あたりの合計購入金額の上限(円)。I-PAT 側でも同じ上限が課されており、
+// 超過するとサーバに拒否される。1点でもこの上限が効くため、
+// 実際に指定できる1点あたりの金額上限もこの値になる(MAX_KINGAKU_YEN には到達しない)。
 constexpr auto MAX_TOTAL_AMOUNT_PER_SEND	= 1000000;					// 1,000,000円
 
 // ST_RACECARD_DATA::ucRaceStatus の値 (I-PAT の開催メニュー jg[6] と同じ意味)。
@@ -30,6 +33,12 @@ constexpr unsigned char RACE_STATUS_CLOSED		= 1;	// 発売終了
 constexpr unsigned char RACE_STATUS_CANCELED	= 2;	// 発売中止
 constexpr unsigned char RACE_STATUS_BEFORE_SALE	= 3;	// 発売前
 constexpr unsigned char RACE_STATUS_UNKNOWN		= 0xFF;	// 取得できなかった
+
+// ST_TICKET_DATA_DETAIL::ucDecisionFlag の特別な値。
+// DECISIONFLAG は 1 始まりのため、0 はどの確定フラグとも衝突しない。
+// 応答が想定より短いなどでその明細を解析できなかったことを表す
+// (他の明細は正常に解析されている。→ README「解析できなかった明細」)。
+constexpr unsigned char DECISION_FLAG_PARSE_FAILED = 0;
 
 // ---------------------------------------------------------------------------
 // 呼び出し規約
@@ -178,6 +187,8 @@ extern	"C" {
 		INTERNATIONAL
 	};
 
+	// 列挙子の値は固定されており、変更されることはない。
+	// 開催場が追加される場合は必ず末尾へ追加されるため、既存の値はそのまま使える。
 	/// <summary>
 	/// 開催場
 	/// </summary>
@@ -456,9 +467,8 @@ extern	"C" {
 
 		/// <summary>
 		/// <para>応援馬券 (同一馬の単勝＋複勝のセット)。方式は通常(NORMAL)・馬番1頭のみ。</para>
-		/// <para>I-PAT の投票電文に応援馬券という式別は存在せず、フロントエンドと同様に
-		/// 本 DLL が送信時へ単勝(WIN)と複勝(PLACE)の2点へ展開する。そのため
-		/// 購入履歴には単勝と複勝が別々の馬券として現れる。</para>
+		/// <para>購入時は単勝と複勝の2点として送信されるため、
+		/// <b>購入履歴には単勝と複勝が別々の馬券として現れる</b>。</para>
 		/// <para>合計購入金額は指定金額の<b>2倍</b>になる (100円指定 = 単勝100円 + 複勝100円)。
 		/// 点数も2点として数える。</para>
 		/// <para>オッズ取得(GetOdds)ではこの式別を指定できない (単勝・複勝を個別に取得すること)。</para>
@@ -969,19 +979,6 @@ extern	"C" {
 		/// 締切時刻だけでは「もう買えないのか」が判断できないため併せて返す。</para>
 		/// </summary>
 		unsigned char ucRaceStatus;
-
-		/// <summary>
-		/// <para>グレード(UTF-8)。"GI" / "GII" / "GIII" / "J・GI" / "J・GII" / "J・GIII" / "L"。</para>
-		/// <para>開催メニュー(rn)から取得。重賞でない場合と取得できない場合は空文字。
-		/// 海外開催は "GI"〜"GIII" のみ返る(I-PAT 側が J・G* / L を返さない)。</para>
-		/// </summary>
-		char szGrade[16];
-
-		/// <summary>
-		/// <para>そのレースの開催回数(「第30回」の 30)。</para>
-		/// <para>開催メニュー(rn)から取得。取得できない場合は 0。</para>
-		/// </summary>
-		unsigned short usRaceNumber;
 	};
 
 	/// <summary>
@@ -1169,7 +1166,7 @@ extern	"C" {
 	/// <param name="ucDay">開催日</param>
 	/// <param name="ucHoushiki">方式</param>
 	/// <param name="ucShikibetsu">式別</param>
-	/// <param name="nKingaku">金額(100円以上MAX_KINGAKU_YEN以下、100円単位)</param>
+	/// <param name="nKingaku">金額(100円以上MAX_TOTAL_AMOUNT_PER_SEND以下、100円単位)</param>
 	/// <param name="szKaime">
 	/// <para>買い目。馬番は1〜18(海外は1〜24)の範囲で指定してください。</para>
 	/// <para>範囲外の馬番が含まれる場合は失敗します(黙って無視はしません)。</para>
@@ -1208,7 +1205,7 @@ extern	"C" {
 	/// <summary>
 	/// 馬券購入情報(WIN5)を取得します。
 	/// </summary>
-	/// <param name="unKingaku">購入金額(100円以上MAX_KINGAKU_YEN以下、100円単位)</param>
+	/// <param name="unKingaku">購入金額(100円以上MAX_TOTAL_AMOUNT_PER_SEND以下、100円単位)</param>
 	/// <param name="usYear">開催年</param>
 	/// <param name="ucMonth">開催月</param>
 	/// <param name="ucDay">開催日</param>
@@ -1375,6 +1372,8 @@ extern	"C" {
 		ST_NOTICE_DATA* pobjNotice
 	);
 
+
+
 #ifdef __cplusplus
 }
 
@@ -1388,6 +1387,138 @@ inline unsigned int& operator|=(unsigned int& l, RETURN_VALUE r) noexcept
     l |= static_cast<unsigned int>(r);
     return l;
 }
+
+// ---------------------------------------------------------------------------
+// 構造体レイアウトの検査 (C++ から取り込んだときのみ)
+//
+//   本ヘッダーの構造体は DLL と同じメモリレイアウトでなければならない。
+//   GetPurchaseData / GetOdds / GetRaceCard / GetNotice などは呼び出し側が確保した
+//   構造体へ DLL が書き込むため、レイアウトが食い違うと確保領域を超えて書き込まれる。
+//
+//   以下の検査はそれをコンパイル時に検出する。もしここでエラーになる場合は、
+//   構造体のレイアウトを変える設定 (#pragma pack など) が有効になっていないか
+//   確認すること。検査の値を書き換えて回避してはならない。
+//   ポインタを含む構造体は x64 / x86 で値が異なるため sizeof(void*) で分岐する。
+// ---------------------------------------------------------------------------
+
+static_assert(sizeof(ST_TICKET_DATA_DETAIL)  == 32, "ST_TICKET_DATA_DETAIL のサイズが DLL と一致しません");
+static_assert(alignof(ST_TICKET_DATA_DETAIL) == 4, "ST_TICKET_DATA_DETAIL のアラインメントが DLL と一致しません");
+static_assert(offsetof(ST_TICKET_DATA_DETAIL, ucDecisionFlag) == 0, "ST_TICKET_DATA_DETAIL::ucDecisionFlag の位置が DLL と一致しません");
+static_assert(offsetof(ST_TICKET_DATA_DETAIL, ucBetFlag) == 1, "ST_TICKET_DATA_DETAIL::ucBetFlag の位置が DLL と一致しません");
+static_assert(offsetof(ST_TICKET_DATA_DETAIL, usKaisai) == 2, "ST_TICKET_DATA_DETAIL::usKaisai の位置が DLL と一致しません");
+static_assert(offsetof(ST_TICKET_DATA_DETAIL, ucRaceNo) == 4, "ST_TICKET_DATA_DETAIL::ucRaceNo の位置が DLL と一致しません");
+static_assert(offsetof(ST_TICKET_DATA_DETAIL, ucWeek) == 5, "ST_TICKET_DATA_DETAIL::ucWeek の位置が DLL と一致しません");
+static_assert(offsetof(ST_TICKET_DATA_DETAIL, ucMethod) == 6, "ST_TICKET_DATA_DETAIL::ucMethod の位置が DLL と一致しません");
+static_assert(offsetof(ST_TICKET_DATA_DETAIL, ucType) == 7, "ST_TICKET_DATA_DETAIL::ucType の位置が DLL と一致しません");
+static_assert(offsetof(ST_TICKET_DATA_DETAIL, unHorse) == 8, "ST_TICKET_DATA_DETAIL::unHorse の位置が DLL と一致しません");
+static_assert(offsetof(ST_TICKET_DATA_DETAIL, ucMulti) == 28, "ST_TICKET_DATA_DETAIL::ucMulti の位置が DLL と一致しません");
+
+static_assert(sizeof(ST_TICKET_DATA)  == (sizeof(void*) == 8 ? 24 : 20), "ST_TICKET_DATA のサイズが DLL と一致しません");
+static_assert(alignof(ST_TICKET_DATA) == (sizeof(void*) == 8 ? 8 : 4), "ST_TICKET_DATA のアラインメントが DLL と一致しません");
+static_assert(offsetof(ST_TICKET_DATA, ucDayFlag) == 0, "ST_TICKET_DATA::ucDayFlag の位置が DLL と一致しません");
+static_assert(offsetof(ST_TICKET_DATA, ucReceiptNo) == 1, "ST_TICKET_DATA::ucReceiptNo の位置が DLL と一致しません");
+static_assert(offsetof(ST_TICKET_DATA, ucHour) == 2, "ST_TICKET_DATA::ucHour の位置が DLL と一致しません");
+static_assert(offsetof(ST_TICKET_DATA, ucMinute) == 3, "ST_TICKET_DATA::ucMinute の位置が DLL と一致しません");
+static_assert(offsetof(ST_TICKET_DATA, unKingaku) == 4, "ST_TICKET_DATA::unKingaku の位置が DLL と一致しません");
+static_assert(offsetof(ST_TICKET_DATA, unPayout) == 8, "ST_TICKET_DATA::unPayout の位置が DLL と一致しません");
+static_assert(offsetof(ST_TICKET_DATA, unDetailCount) == 12, "ST_TICKET_DATA::unDetailCount の位置が DLL と一致しません");
+static_assert(offsetof(ST_TICKET_DATA, pobjDetail) == 16, "ST_TICKET_DATA::pobjDetail の位置が DLL と一致しません");
+
+static_assert(sizeof(ST_PURCHASE_DATA)  == (sizeof(void*) == 8 ? 40 : 32), "ST_PURCHASE_DATA のサイズが DLL と一致しません");
+static_assert(alignof(ST_PURCHASE_DATA) == (sizeof(void*) == 8 ? 8 : 4), "ST_PURCHASE_DATA のアラインメントが DLL と一致しません");
+static_assert(offsetof(ST_PURCHASE_DATA, usRemainBetCount) == 0, "ST_PURCHASE_DATA::usRemainBetCount の位置が DLL と一致しません");
+static_assert(offsetof(ST_PURCHASE_DATA, unBalance) == 4, "ST_PURCHASE_DATA::unBalance の位置が DLL と一致しません");
+static_assert(offsetof(ST_PURCHASE_DATA, unDayPurchase) == 8, "ST_PURCHASE_DATA::unDayPurchase の位置が DLL と一致しません");
+static_assert(offsetof(ST_PURCHASE_DATA, unDayPayout) == 12, "ST_PURCHASE_DATA::unDayPayout の位置が DLL と一致しません");
+static_assert(offsetof(ST_PURCHASE_DATA, unTotalPurchase) == 16, "ST_PURCHASE_DATA::unTotalPurchase の位置が DLL と一致しません");
+static_assert(offsetof(ST_PURCHASE_DATA, unTotalPayout) == 20, "ST_PURCHASE_DATA::unTotalPayout の位置が DLL と一致しません");
+static_assert(offsetof(ST_PURCHASE_DATA, unTicketCount) == 24, "ST_PURCHASE_DATA::unTicketCount の位置が DLL と一致しません");
+static_assert(offsetof(ST_PURCHASE_DATA, pobjTicketData) == (sizeof(void*) == 8 ? 32 : 28), "ST_PURCHASE_DATA::pobjTicketData の位置が DLL と一致しません");
+
+static_assert(sizeof(ST_BET_DATA)  == 32, "ST_BET_DATA のサイズが DLL と一致しません");
+static_assert(alignof(ST_BET_DATA) == 4, "ST_BET_DATA のアラインメントが DLL と一致しません");
+static_assert(offsetof(ST_BET_DATA, usPlace) == 0, "ST_BET_DATA::usPlace の位置が DLL と一致しません");
+static_assert(offsetof(ST_BET_DATA, ucRaceNo) == 2, "ST_BET_DATA::ucRaceNo の位置が DLL と一致しません");
+static_assert(offsetof(ST_BET_DATA, ucYoubi) == 3, "ST_BET_DATA::ucYoubi の位置が DLL と一致しません");
+static_assert(offsetof(ST_BET_DATA, ucHoushiki) == 4, "ST_BET_DATA::ucHoushiki の位置が DLL と一致しません");
+static_assert(offsetof(ST_BET_DATA, ucShikibetsu) == 5, "ST_BET_DATA::ucShikibetsu の位置が DLL と一致しません");
+static_assert(offsetof(ST_BET_DATA, unKingaku) == 8, "ST_BET_DATA::unKingaku の位置が DLL と一致しません");
+static_assert(offsetof(ST_BET_DATA, unUmaban) == 12, "ST_BET_DATA::unUmaban の位置が DLL と一致しません");
+static_assert(offsetof(ST_BET_DATA, unTotalAmount) == 24, "ST_BET_DATA::unTotalAmount の位置が DLL と一致しません");
+static_assert(offsetof(ST_BET_DATA, ucMulti) == 28, "ST_BET_DATA::ucMulti の位置が DLL と一致しません");
+
+static_assert(sizeof(ST_BET_DATA_WIN5)  == 28, "ST_BET_DATA_WIN5 のサイズが DLL と一致しません");
+static_assert(alignof(ST_BET_DATA_WIN5) == 4, "ST_BET_DATA_WIN5 のアラインメントが DLL と一致しません");
+static_assert(offsetof(ST_BET_DATA_WIN5, unKingaku) == 0, "ST_BET_DATA_WIN5::unKingaku の位置が DLL と一致しません");
+static_assert(offsetof(ST_BET_DATA_WIN5, ucYoubi) == 4, "ST_BET_DATA_WIN5::ucYoubi の位置が DLL と一致しません");
+static_assert(offsetof(ST_BET_DATA_WIN5, unUmaban) == 8, "ST_BET_DATA_WIN5::unUmaban の位置が DLL と一致しません");
+
+static_assert(sizeof(ST_ODDS_DETAIL)  == 16, "ST_ODDS_DETAIL のサイズが DLL と一致しません");
+static_assert(alignof(ST_ODDS_DETAIL) == 4, "ST_ODDS_DETAIL のアラインメントが DLL と一致しません");
+static_assert(offsetof(ST_ODDS_DETAIL, ucType) == 0, "ST_ODDS_DETAIL::ucType の位置が DLL と一致しません");
+static_assert(offsetof(ST_ODDS_DETAIL, ucHorse1) == 1, "ST_ODDS_DETAIL::ucHorse1 の位置が DLL と一致しません");
+static_assert(offsetof(ST_ODDS_DETAIL, ucHorse2) == 2, "ST_ODDS_DETAIL::ucHorse2 の位置が DLL と一致しません");
+static_assert(offsetof(ST_ODDS_DETAIL, ucHorse3) == 3, "ST_ODDS_DETAIL::ucHorse3 の位置が DLL と一致しません");
+static_assert(offsetof(ST_ODDS_DETAIL, ucStatus) == 4, "ST_ODDS_DETAIL::ucStatus の位置が DLL と一致しません");
+static_assert(offsetof(ST_ODDS_DETAIL, unOdds) == 8, "ST_ODDS_DETAIL::unOdds の位置が DLL と一致しません");
+static_assert(offsetof(ST_ODDS_DETAIL, unOddsHigh) == 12, "ST_ODDS_DETAIL::unOddsHigh の位置が DLL と一致しません");
+
+static_assert(sizeof(ST_ODDS_DATA)  == (sizeof(void*) == 8 ? 24 : 20), "ST_ODDS_DATA のサイズが DLL と一致しません");
+static_assert(alignof(ST_ODDS_DATA) == (sizeof(void*) == 8 ? 8 : 4), "ST_ODDS_DATA のアラインメントが DLL と一致しません");
+static_assert(offsetof(ST_ODDS_DATA, usPlace) == 0, "ST_ODDS_DATA::usPlace の位置が DLL と一致しません");
+static_assert(offsetof(ST_ODDS_DATA, ucRaceNo) == 2, "ST_ODDS_DATA::ucRaceNo の位置が DLL と一致しません");
+static_assert(offsetof(ST_ODDS_DATA, szOddsTime) == 3, "ST_ODDS_DATA::szOddsTime の位置が DLL と一致しません");
+static_assert(offsetof(ST_ODDS_DATA, unDetailCount) == 12, "ST_ODDS_DATA::unDetailCount の位置が DLL と一致しません");
+static_assert(offsetof(ST_ODDS_DATA, pobjDetail) == 16, "ST_ODDS_DATA::pobjDetail の位置が DLL と一致しません");
+
+static_assert(sizeof(ST_ENTRY_DETAIL)  == 204, "ST_ENTRY_DETAIL のサイズが DLL と一致しません");
+static_assert(alignof(ST_ENTRY_DETAIL) == 4, "ST_ENTRY_DETAIL のアラインメントが DLL と一致しません");
+static_assert(offsetof(ST_ENTRY_DETAIL, ucWakuban) == 0, "ST_ENTRY_DETAIL::ucWakuban の位置が DLL と一致しません");
+static_assert(offsetof(ST_ENTRY_DETAIL, ucUmaban) == 1, "ST_ENTRY_DETAIL::ucUmaban の位置が DLL と一致しません");
+static_assert(offsetof(ST_ENTRY_DETAIL, szHorseName) == 2, "ST_ENTRY_DETAIL::szHorseName の位置が DLL と一致しません");
+static_assert(offsetof(ST_ENTRY_DETAIL, szSex) == 66, "ST_ENTRY_DETAIL::szSex の位置が DLL と一致しません");
+static_assert(offsetof(ST_ENTRY_DETAIL, ucAge) == 74, "ST_ENTRY_DETAIL::ucAge の位置が DLL と一致しません");
+static_assert(offsetof(ST_ENTRY_DETAIL, ucWeightStatus) == 75, "ST_ENTRY_DETAIL::ucWeightStatus の位置が DLL と一致しません");
+static_assert(offsetof(ST_ENTRY_DETAIL, usWeight) == 76, "ST_ENTRY_DETAIL::usWeight の位置が DLL と一致しません");
+static_assert(offsetof(ST_ENTRY_DETAIL, ucWeightDiffCode) == 78, "ST_ENTRY_DETAIL::ucWeightDiffCode の位置が DLL と一致しません");
+static_assert(offsetof(ST_ENTRY_DETAIL, usWeightDiff) == 80, "ST_ENTRY_DETAIL::usWeightDiff の位置が DLL と一致しません");
+static_assert(offsetof(ST_ENTRY_DETAIL, ucApprentice) == 82, "ST_ENTRY_DETAIL::ucApprentice の位置が DLL と一致しません");
+static_assert(offsetof(ST_ENTRY_DETAIL, szJockeyName) == 83, "ST_ENTRY_DETAIL::szJockeyName の位置が DLL と一致しません");
+static_assert(offsetof(ST_ENTRY_DETAIL, usBurden) == 132, "ST_ENTRY_DETAIL::usBurden の位置が DLL と一致しません");
+static_assert(offsetof(ST_ENTRY_DETAIL, szTrainerName) == 134, "ST_ENTRY_DETAIL::szTrainerName の位置が DLL と一致しません");
+static_assert(offsetof(ST_ENTRY_DETAIL, usWinPopular) == 182, "ST_ENTRY_DETAIL::usWinPopular の位置が DLL と一致しません");
+static_assert(offsetof(ST_ENTRY_DETAIL, ucWinOddsStatus) == 184, "ST_ENTRY_DETAIL::ucWinOddsStatus の位置が DLL と一致しません");
+static_assert(offsetof(ST_ENTRY_DETAIL, unWinOdds) == 188, "ST_ENTRY_DETAIL::unWinOdds の位置が DLL と一致しません");
+static_assert(offsetof(ST_ENTRY_DETAIL, ucPlaceOddsStatus) == 192, "ST_ENTRY_DETAIL::ucPlaceOddsStatus の位置が DLL と一致しません");
+static_assert(offsetof(ST_ENTRY_DETAIL, unPlaceOddsLow) == 196, "ST_ENTRY_DETAIL::unPlaceOddsLow の位置が DLL と一致しません");
+static_assert(offsetof(ST_ENTRY_DETAIL, unPlaceOddsHigh) == 200, "ST_ENTRY_DETAIL::unPlaceOddsHigh の位置が DLL と一致しません");
+
+static_assert(sizeof(ST_RACECARD_DATA)  == (sizeof(void*) == 8 ? 168 : 160), "ST_RACECARD_DATA のサイズが DLL と一致しません");
+static_assert(alignof(ST_RACECARD_DATA) == (sizeof(void*) == 8 ? 8 : 4), "ST_RACECARD_DATA のアラインメントが DLL と一致しません");
+static_assert(offsetof(ST_RACECARD_DATA, usPlace) == 0, "ST_RACECARD_DATA::usPlace の位置が DLL と一致しません");
+static_assert(offsetof(ST_RACECARD_DATA, ucRaceNo) == 2, "ST_RACECARD_DATA::ucRaceNo の位置が DLL と一致しません");
+static_assert(offsetof(ST_RACECARD_DATA, szOddsTime) == 3, "ST_RACECARD_DATA::szOddsTime の位置が DLL と一致しません");
+static_assert(offsetof(ST_RACECARD_DATA, unEntryCount) == 12, "ST_RACECARD_DATA::unEntryCount の位置が DLL と一致しません");
+static_assert(offsetof(ST_RACECARD_DATA, pobjEntry) == 16, "ST_RACECARD_DATA::pobjEntry の位置が DLL と一致しません");
+static_assert(offsetof(ST_RACECARD_DATA, szRaceName) == (sizeof(void*) == 8 ? 24 : 20), "ST_RACECARD_DATA::szRaceName の位置が DLL と一致しません");
+static_assert(offsetof(ST_RACECARD_DATA, szDeadline) == (sizeof(void*) == 8 ? 152 : 148), "ST_RACECARD_DATA::szDeadline の位置が DLL と一致しません");
+static_assert(offsetof(ST_RACECARD_DATA, ucRaceStatus) == (sizeof(void*) == 8 ? 160 : 156), "ST_RACECARD_DATA::ucRaceStatus の位置が DLL と一致しません");
+
+static_assert(sizeof(ST_NOTICE_ITEM)  == 1760, "ST_NOTICE_ITEM のサイズが DLL と一致しません");
+static_assert(alignof(ST_NOTICE_ITEM) == 1, "ST_NOTICE_ITEM のアラインメントが DLL と一致しません");
+static_assert(offsetof(ST_NOTICE_ITEM, szTitle) == 0, "ST_NOTICE_ITEM::szTitle の位置が DLL と一致しません");
+static_assert(offsetof(ST_NOTICE_ITEM, szDate) == 512, "ST_NOTICE_ITEM::szDate の位置が DLL と一致しません");
+static_assert(offsetof(ST_NOTICE_ITEM, szUrl) == 576, "ST_NOTICE_ITEM::szUrl の位置が DLL と一致しません");
+static_assert(offsetof(ST_NOTICE_ITEM, szIcon) == 1600, "ST_NOTICE_ITEM::szIcon の位置が DLL と一致しません");
+static_assert(offsetof(ST_NOTICE_ITEM, szColor) == 1728, "ST_NOTICE_ITEM::szColor の位置が DLL と一致しません");
+
+static_assert(sizeof(ST_NOTICE_DATA)  == (sizeof(void*) == 8 ? 2088 : 2080), "ST_NOTICE_DATA のサイズが DLL と一致しません");
+static_assert(alignof(ST_NOTICE_DATA) == (sizeof(void*) == 8 ? 8 : 4), "ST_NOTICE_DATA のアラインメントが DLL と一致しません");
+static_assert(offsetof(ST_NOTICE_DATA, szMessage) == 0, "ST_NOTICE_DATA::szMessage の位置が DLL と一致しません");
+static_assert(offsetof(ST_NOTICE_DATA, szNoticeNo) == 2048, "ST_NOTICE_DATA::szNoticeNo の位置が DLL と一致しません");
+static_assert(offsetof(ST_NOTICE_DATA, szNoticeType) == 2064, "ST_NOTICE_DATA::szNoticeType の位置が DLL と一致しません");
+static_assert(offsetof(ST_NOTICE_DATA, unItemCount) == 2072, "ST_NOTICE_DATA::unItemCount の位置が DLL と一致しません");
+static_assert(offsetof(ST_NOTICE_DATA, pobjItem) == (sizeof(void*) == 8 ? 2080 : 2076), "ST_NOTICE_DATA::pobjItem の位置が DLL と一致しません");
 #endif
 
 #endif
