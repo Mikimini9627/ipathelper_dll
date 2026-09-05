@@ -149,20 +149,43 @@ extern	"C" {
 	};
 
 	/// <summary>
-	/// 確定フラグ
+	/// <para>確定フラグ (ST_TICKET_DATA_DETAIL::ucDecisionFlag)。</para>
+	/// <para>0 は DECISION_FLAG_PARSE_FAILED (その明細を解析できなかった) のため、
+	/// 1 始まりです。</para>
 	/// </summary>
 	enum class DECISIONFLAG {
 
+		/// <summary>既定</summary>
 		DEFAULT = 1,
+
+		/// <summary>通常確定</summary>
 		NORMAL,
+
+		/// <summary>発売締切</summary>
 		DEADLINE,
+
+		/// <summary>キャンセル</summary>
 		CANCEL,
+
+		/// <summary>仲間入力取消</summary>
 		FLATMATESCANCEL,
+
+		/// <summary>的中</summary>
 		HIT,
+
+		/// <summary>外れ</summary>
 		MISS,
+
+		/// <summary>返還</summary>
 		BACK,
+
+		/// <summary>一部取消</summary>
 		PARTCANCEL,
+
+		/// <summary>無効</summary>
 		INVALID,
+
+		/// <summary>発売取消</summary>
 		SALECANCEL
 	};
 
