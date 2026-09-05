@@ -1046,6 +1046,73 @@ extern	"C" {
 	};
 
 	/// <summary>
+	/// 開催中のレース1つ分(GetKaisaiListが返す)
+	/// </summary>
+	struct ST_KAISAI_RACE {
+
+		/// <summary>
+		/// レース番号(1始まり)
+		/// </summary>
+		unsigned char ucRaceNo;
+
+		/// <summary>
+		/// <para>発売状態(RACE_STATUS_*)。</para>
+		/// <para>締切時刻だけでは購入可否が判断できないため併せて参照すること。</para>
+		/// </summary>
+		unsigned char ucRaceStatus;
+
+		/// <summary>
+		/// 発売締切時刻 "HH:MM"。取得できない場合は空文字。
+		/// </summary>
+		char szDeadline[8];
+
+		/// <summary>
+		/// <para>レース名(UTF-8)。取得できない場合は空文字。</para>
+		/// <para>海外開催でも取得できる。</para>
+		/// </summary>
+		char szRaceName[128];
+	};
+
+	/// <summary>
+	/// 開催中の開催場1つ分(GetKaisaiListが返す)
+	/// </summary>
+	struct ST_KAISAI_ITEM {
+
+		/// <summary>
+		/// 開催場(KAISAI)
+		/// </summary>
+		unsigned short usPlace;
+
+		/// <summary>
+		/// レース数(pobjRaceの要素数)
+		/// </summary>
+		unsigned int unRaceCount;
+
+		/// <summary>
+		/// <para>レース配列(unRaceCount件)。0件の場合はnullptr。</para>
+		/// <para>添字はレース番号順だが、欠番があり得るためレース番号は
+		/// ucRaceNoで判断すること(添字+1と一致するとは限らない)。</para>
+		/// </summary>
+		ST_KAISAI_RACE* pobjRace;
+	};
+
+	/// <summary>
+	/// 本日の開催場一覧
+	/// </summary>
+	struct ST_KAISAI_DATA {
+
+		/// <summary>
+		/// 開催場数(pobjKaisaiの要素数)
+		/// </summary>
+		unsigned int unKaisaiCount;
+
+		/// <summary>
+		/// 開催場配列(unKaisaiCount件)。0件の場合はnullptr。
+		/// </summary>
+		ST_KAISAI_ITEM* pobjKaisai;
+	};
+
+	/// <summary>
 	/// I-PATへログインします。
 	/// </summary>
 	/// <param name="szINetId">I-NET ID</param>
@@ -1374,6 +1441,33 @@ extern	"C" {
 		ST_NOTICE_DATA* pobjNotice
 	);
 
+	/// <summary>
+	/// <para>本日開催されている開催場の一覧を取得します。</para>
+	/// <para>開催場ごとに、レース番号・発売締切時刻・発売状態・レース名も併せて返します。</para>
+	/// <para>ログイン済みの系統(中央・地方)と、中央にログインしていれば海外を対象とします。
+	/// 系統ごとに1回ずつ、<b>最大3回の通信</b>で全開催場が得られます
+	/// (GetRaceCardを開催場の数だけ呼ぶ必要はありません)。</para>
+	/// <para>片方の系統だけ失敗した場合は、取得できた分を返したうえで
+	/// FAILED_CHUOU / FAILED_CHIHOU を立てます(SUCCESSと同時に立ちます)。
+	/// すべての系統で失敗した場合のみSUCCESSは立ちません。</para>
+	/// <para>開催が1つも無い場合はunKaisaiCountが0で成功を返します。</para>
+	/// <para>使用後は必ずReleaseKaisaiDataで解放してください。</para>
+	/// </summary>
+	/// <param name="pobjKaisai">開催場一覧</param>
+	/// <returns></returns>
+	unsigned int IPAT_API GetKaisaiList(
+		ST_KAISAI_DATA* pobjKaisai
+	);
+
+	/// <summary>
+	/// <para>開催場一覧を解放します。</para>
+	/// <para>GetKaisaiListの可否に依らず必ず実行してください。</para>
+	/// </summary>
+	/// <param name="pobjKaisai">開催場一覧</param>
+	void IPAT_API ReleaseKaisaiData(
+		ST_KAISAI_DATA* pobjKaisai
+	);
+
 
 
 #ifdef __cplusplus
@@ -1521,6 +1615,24 @@ static_assert(offsetof(ST_NOTICE_DATA, szNoticeNo) == 2048, "ST_NOTICE_DATA::szN
 static_assert(offsetof(ST_NOTICE_DATA, szNoticeType) == 2064, "ST_NOTICE_DATA::szNoticeType の位置が DLL と一致しません");
 static_assert(offsetof(ST_NOTICE_DATA, unItemCount) == 2072, "ST_NOTICE_DATA::unItemCount の位置が DLL と一致しません");
 static_assert(offsetof(ST_NOTICE_DATA, pobjItem) == (sizeof(void*) == 8 ? 2080 : 2076), "ST_NOTICE_DATA::pobjItem の位置が DLL と一致しません");
+
+static_assert(sizeof(ST_KAISAI_RACE)  == 138, "ST_KAISAI_RACE のサイズが DLL と一致しません");
+static_assert(alignof(ST_KAISAI_RACE) == 1, "ST_KAISAI_RACE のアラインメントが DLL と一致しません");
+static_assert(offsetof(ST_KAISAI_RACE, ucRaceNo) == 0, "ST_KAISAI_RACE::ucRaceNo の位置が DLL と一致しません");
+static_assert(offsetof(ST_KAISAI_RACE, ucRaceStatus) == 1, "ST_KAISAI_RACE::ucRaceStatus の位置が DLL と一致しません");
+static_assert(offsetof(ST_KAISAI_RACE, szDeadline) == 2, "ST_KAISAI_RACE::szDeadline の位置が DLL と一致しません");
+static_assert(offsetof(ST_KAISAI_RACE, szRaceName) == 10, "ST_KAISAI_RACE::szRaceName の位置が DLL と一致しません");
+
+static_assert(sizeof(ST_KAISAI_ITEM)  == (sizeof(void*) == 8 ? 16 : 12), "ST_KAISAI_ITEM のサイズが DLL と一致しません");
+static_assert(alignof(ST_KAISAI_ITEM) == (sizeof(void*) == 8 ? 8 : 4), "ST_KAISAI_ITEM のアラインメントが DLL と一致しません");
+static_assert(offsetof(ST_KAISAI_ITEM, usPlace) == 0, "ST_KAISAI_ITEM::usPlace の位置が DLL と一致しません");
+static_assert(offsetof(ST_KAISAI_ITEM, unRaceCount) == 4, "ST_KAISAI_ITEM::unRaceCount の位置が DLL と一致しません");
+static_assert(offsetof(ST_KAISAI_ITEM, pobjRace) == 8, "ST_KAISAI_ITEM::pobjRace の位置が DLL と一致しません");
+
+static_assert(sizeof(ST_KAISAI_DATA)  == (sizeof(void*) == 8 ? 16 : 8), "ST_KAISAI_DATA のサイズが DLL と一致しません");
+static_assert(alignof(ST_KAISAI_DATA) == (sizeof(void*) == 8 ? 8 : 4), "ST_KAISAI_DATA のアラインメントが DLL と一致しません");
+static_assert(offsetof(ST_KAISAI_DATA, unKaisaiCount) == 0, "ST_KAISAI_DATA::unKaisaiCount の位置が DLL と一致しません");
+static_assert(offsetof(ST_KAISAI_DATA, pobjKaisai) == (sizeof(void*) == 8 ? 8 : 4), "ST_KAISAI_DATA::pobjKaisai の位置が DLL と一致しません");
 #endif
 
 #endif
