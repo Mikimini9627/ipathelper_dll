@@ -10,8 +10,10 @@
 
 ## 📦 バイナリのダウンロード
 
-ビルド済みバイナリは [こちら](https://github.com/Mikimini9627/ipathelper_dll/tree/main/builds) からダウンロードできます。  
-実行環境に合わせて **x64 / x86** を選択してください。
+ビルド済みバイナリは [リリースページ](https://github.com/Mikimini9627/ipathelper_dll/releases/latest) からダウンロードできます。  
+実行環境に合わせて **x64 / x86** の zip を選択してください（`IpatHelper.dll` と `IpatHelper.lib` を同梱しています）。
+
+最新のビルド成果物は [`builds/`](https://github.com/Mikimini9627/ipathelper_dll/tree/master/builds) からも直接参照できます。
 
 公開APIの詳細については [関数仕様書](/builds/関数仕様書.md) を参照してください。
 
