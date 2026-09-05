@@ -189,7 +189,7 @@ if (ret & (unsigned int)RETURN_VALUE::FAILED_OUT_OF_SERVICE) {
 
 ### 🪵 ログの取得
 
-入出金はサーバレンダリングの HTML フォームのため `erc` / `erm` のようなエラーコードを返しません。
+入出金はサーバがエラーコードを返さないため、戻り値だけでは失敗の理由が分かりません。
 **失敗の原因を知るには `SetLogCallback` が唯一の手段です。**
 
 ```cpp
@@ -233,7 +233,7 @@ Python の DLL 解放を含む）で **DLL を明示的にアンロードする�
 
 ## 🚀 クイックスタート
 
-実装サンプルをリポジトリ内に用意しています（`sample_app/` 配下に C++ / C# / Python）。各言語ごとのサンプルを参考にしてください。  
+実装サンプルをリポジトリ内に用意しています（`sample_app/` 配下に C++ / C# / Java / Python）。各言語ごとのサンプルを参考にしてください。  
 主要言語向けにはラッパーライブラリを配布しているため、DLL を直接扱わずに導入できます。
 
 **Python（PyPI）** — [ipathelper](https://pypi.org/project/ipathelper/)

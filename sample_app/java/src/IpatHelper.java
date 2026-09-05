@@ -22,19 +22,37 @@ public class IpatHelper {
 		public int GetPurchaseData(ST_PURCHASE_DATA_INTERNAL purchaseData);
 		// 変更: 値渡し → ポインタ渡し（ByReference）
 		public void ReleasePurchaseData(ST_PURCHASE_DATA_INTERNAL.ByReference purchaseData);
+		// 開催年(usYear)は unsigned short。byte で渡すと 2020 が切り詰められるため short で受ける。
 		public int GetBetInstance(short place, byte raceNo,
-				byte year, byte month, byte day, byte houshiki,
+				short year, byte month, byte day, byte houshiki,
 				byte shikibetsu, int kingaku, String kaime, ST_BET_DATA betData);
 		public int Bet(ST_BET_DATA[] betData, short betCount, short waitMilliSeconds);
 		public int SetAutoDepositFlag(boolean enable, int depositValue, short confirmTimeout);
-		public int GetBetInstanceWin5(int kingaku, byte year,
+		public int GetBetInstanceWin5(int kingaku, short year,
 				byte month, byte day, String kaime, ST_BET_DATA_WIN5 betData);
 		public int BetWin5(ST_BET_DATA_WIN5 betData, short waitMilliSeconds);
+		public int BetWin5Auto(byte mode, String axisUmaban, short betCount,
+				int kingaku, short year, byte month, byte day);
 		public int GetOdds(short place, byte raceNo, byte shikibetsu, ST_ODDS_DATA_INTERNAL oddsData);
 		public void ReleaseOddsData(ST_ODDS_DATA_INTERNAL.ByReference oddsData);
 		public int GetRaceCard(short place, byte raceNo, ST_RACECARD_DATA_INTERNAL raceCardData);
 		public void ReleaseRaceCardData(ST_RACECARD_DATA_INTERNAL.ByReference raceCardData);
+		public int GetNotice(ST_NOTICE_DATA_INTERNAL noticeData);
+		public void ReleaseNoticeData(ST_NOTICE_DATA_INTERNAL.ByReference noticeData);
+		public void SetLogCallback(LogCallback callback, int minLevel);
 	}
+
+	// DLL内部のログを受け取るコールバック。
+	// 入出金はサーバがエラーコードを返さないため、失敗の原因を知る唯一の手段になる。
+	// 注意: コールバックはDLL内部ロックを保持したまま呼ばれるため、
+	// この中から本クラスのAPIを呼び返さないこと(デッドロックする)。
+	// またログイン中は中央・地方の2スレッドから同時に呼ばれる。
+	public interface LogCallback extends com.sun.jna.Callback {
+		void invoke(int level, Pointer message);
+	}
+
+	// JNAへ渡したコールバックはGCされるとクラッシュするため参照を保持する
+	private LogCallback m_logCallback = null;
 
 	//開催
 	public class Kaisai{
@@ -107,7 +125,7 @@ public class IpatHelper {
 		public static final int ODDS_STATUS_UNACQUIRED = 2;
 	}
 
-	//レースの発売状態 (ST_RACECARD_DATA.raceStatus。開催メニュー jg 由来)
+	//レースの発売状態 (ST_RACECARD_DATA.raceStatus)
 	//UNKNOWN が 0 でないのは、0 が「発売中」でありゼロ初期化と区別する必要があるため。
 	public class RaceStatus{
 		public static final byte RACE_STATUS_ON_SALE = 0;
@@ -171,6 +189,23 @@ public class IpatHelper {
 		public static final int FAILED_CHIHOU = 8;
 		public static final int FAILED_COMMUNICATE_CHUOU = 16;
 		public static final int FAILED_COMMUNICATE_CHIHOU  = 32;
+		// サービス時間外(FAILED_CHUOU / FAILED_CHIHOU と併せて立つ)。
+		// 投票受付時間外が最も多い原因で、即座に再試行しても必ず失敗する。
+		public static final int FAILED_OUT_OF_SERVICE = 64;
+	}
+
+	//ログレベル
+	public class LogLevel{
+		public static final int LOG_LEVEL_TRACE = 0;
+		public static final int LOG_LEVEL_INFO = 1;
+		public static final int LOG_LEVEL_WARN = 2;
+		public static final int LOG_LEVEL_ERROR = 3;
+	}
+
+	//WIN5の購入方式(BetWin5Auto)
+	public class Win5AutoMode{
+		public static final int WIN5_AUTO_SELECT = 2;   // セレクト: 軸馬を指定し、残りはサーバが選ぶ
+		public static final int WIN5_AUTO_RANDOM = 3;   // ランダム: すべてサーバが選ぶ
 	}
 
 	// 馬券情報(詳細)
@@ -585,7 +620,7 @@ public class IpatHelper {
 
 		@Override
         protected List<String> getFieldOrder() {
-            return Arrays.asList("place", "raceNo", "oddsTime", "entryCount", "entryData", "raceName", "deadline", "raceStatus", "grade", "raceNumber");
+            return Arrays.asList("place", "raceNo", "oddsTime", "entryCount", "entryData", "raceName", "deadline", "raceStatus");
         }
 
 		public short place;
@@ -594,13 +629,10 @@ public class IpatHelper {
 		public int entryCount;
 		public Pointer entryData;
 		public byte[] raceName;
-		// ネイティブ側の ST_RACECARD_DATA へ後から追加されたフィールド。
-		// この構造体はネイティブ側が直接書き込む領域のため、
-		// 順序・型 (getFieldOrder 含む) が DLL 側と一致していないとメモリ破壊になる。
+		// この構造体はネイティブ側が直接書き込む領域のため、順序・型 (getFieldOrder 含む) が
+		// DLL 側の ST_RACECARD_DATA と一致していないとメモリ破壊になる。
 		public byte[] deadline;
 		public byte raceStatus;
-		public byte[] grade;
-		public short raceNumber;
 
 		public ST_RACECARD_DATA_INTERNAL() {
 			place = 0;
@@ -611,8 +643,6 @@ public class IpatHelper {
 			raceName = new byte[128];
 			deadline = new byte[8];
 			raceStatus = RaceStatus.RACE_STATUS_UNKNOWN;
-			grade = new byte[16];
-			raceNumber = 0;
 		}
 
 		// ポインタ渡し用の ByReference 内部クラス
@@ -630,8 +660,6 @@ public class IpatHelper {
 		public String raceName;
 		public String deadline;   // 発売締切時刻 "HH:MM"(取得不可時は空文字)
 		public byte raceStatus;   // 発売状態 (RACE_STATUS_*)
-		public String grade;      // グレード "GI"/"J・GI"/"L" 等(重賞でなければ空文字)
-		public short raceNumber;  // 開催回数(「第30回」の 30)
 
 		public ST_RACECARD_DATA() {
 			place = 0;
@@ -642,8 +670,110 @@ public class IpatHelper {
 			raceName = "";
 			deadline = "";
 			raceStatus = RaceStatus.RACE_STATUS_UNKNOWN;
-			grade = "";
-			raceNumber = 0;
+		}
+	}
+
+	// お知らせ一覧の1件(ネイティブ側が直接書き込む領域)
+	public static class ST_NOTICE_ITEM_INTERNAL extends Structure {
+
+		@Override
+		protected List<String> getFieldOrder() {
+			return Arrays.asList("title", "date", "url", "icon", "color");
+		}
+
+		public byte[] title;
+		public byte[] date;
+		public byte[] url;
+		public byte[] icon;
+		public byte[] color;
+
+		public ST_NOTICE_ITEM_INTERNAL() {
+			title = new byte[512];
+			date = new byte[64];
+			url = new byte[1024];
+			icon = new byte[128];
+			color = new byte[32];
+		}
+
+	};
+
+	// お知らせ一覧(内部使用)。連続配置された ST_NOTICE_ITEM の配列をまとめて読み出す
+	public static class ST_NOTICE_ITEM_LIST_INTERNAL extends Structure {
+
+		@Override
+		protected List<String> getFieldOrder() {
+			return Arrays.asList("itemList");
+		}
+
+		public ST_NOTICE_ITEM_INTERNAL[] itemList;
+
+		public ST_NOTICE_ITEM_LIST_INTERNAL(Pointer sourcePointer, int itemCount) {
+			super(sourcePointer);
+			itemList = new ST_NOTICE_ITEM_INTERNAL[itemCount];
+			read();
+		}
+	};
+
+	// お知らせ情報(ネイティブ側が直接書き込む領域)。
+	// 順序・型 (getFieldOrder 含む) が DLL 側の ST_NOTICE_DATA と一致していないとメモリ破壊になる。
+	public static class ST_NOTICE_DATA_INTERNAL extends Structure {
+
+		@Override
+		protected List<String> getFieldOrder() {
+			return Arrays.asList("message", "noticeNo", "noticeType", "itemCount", "itemData");
+		}
+
+		public byte[] message;
+		public byte[] noticeNo;
+		public byte[] noticeType;
+		public int itemCount;
+		public Pointer itemData;
+
+		public ST_NOTICE_DATA_INTERNAL() {
+			message = new byte[2048];
+			noticeNo = new byte[16];
+			noticeType = new byte[8];
+			itemCount = 0;
+			itemData = null;
+		}
+
+		// ポインタ渡し用の ByReference 内部クラス
+		public static class ByReference extends ST_NOTICE_DATA_INTERNAL implements Structure.ByReference {}
+	};
+
+	// お知らせ一覧の1件
+	public static class ST_NOTICE_ITEM {
+
+		public String title;    // タイトル
+		public String date;     // 日付テキスト
+		public String url;      // リンクURL
+		public String icon;     // アイコンファイル名
+		public String color;    // 日付表示色
+
+		public ST_NOTICE_ITEM() {
+			title = "";
+			date = "";
+			url = "";
+			icon = "";
+			color = "";
+		}
+	}
+
+	// お知らせ情報
+	public static class ST_NOTICE_DATA {
+
+		public String message;          // 強制表示お知らせ本文(無い場合は空文字)
+		public String noticeNo;         // お知らせ番号
+		public String noticeType;       // お知らせ種別
+		public int itemCount;           // お知らせ一覧の件数
+		public ST_NOTICE_ITEM[] items;  // お知らせ一覧
+
+		public ST_NOTICE_DATA() {
+			message = "";
+			noticeNo = "";
+			noticeType = "";
+			itemCount = 0;
+			items = null;
 		}
 	}
 
@@ -768,7 +898,7 @@ public class IpatHelper {
 			int year, int month, int day, int houshiki,
 			int shikibetsu, int kingaku, String kaime, ST_BET_DATA betData) {
 
-		return m_iPatHelperInvoker.GetBetInstance((short)place, (byte)raceNo, (byte)year, 
+		return m_iPatHelperInvoker.GetBetInstance((short)place, (byte)raceNo, (short)year,
 				(byte)month,(byte) day, (byte)houshiki, (byte)shikibetsu, kingaku, kaime, betData);
 	}
 
@@ -785,7 +915,7 @@ public class IpatHelper {
 	//ベットインスタンス取得(Win5)
 	public int GetBetInstanceWin5(int kingaku, int year,
 			int month, int day, String kaime, ST_BET_DATA_WIN5 betData) {
-		return m_iPatHelperInvoker.GetBetInstanceWin5(kingaku, (byte)year, (byte)month, (byte)day, kaime, betData);
+		return m_iPatHelperInvoker.GetBetInstanceWin5(kingaku, (short)year, (byte)month, (byte)day, kaime, betData);
 	}
 
 	//投票(Win5)
@@ -793,7 +923,7 @@ public class IpatHelper {
 		return m_iPatHelperInvoker.BetWin5(betData, (short)waitMilliSeconds);
 	}
 
-	//オッズ取得(中央競馬・地方競馬に対応)
+	//オッズ取得(中央競馬・地方競馬・海外競馬に対応)
 	public int GetOdds(int place, int raceNo, int shikibetsu, ST_ODDS_DATA oddsData) {
 
 		ST_ODDS_DATA_INTERNAL tempOdds = new ST_ODDS_DATA_INTERNAL();
@@ -828,7 +958,7 @@ public class IpatHelper {
 		return returnValue;
 	}
 
-	//出馬表取得(中央競馬・地方競馬に対応)
+	//出馬表取得(中央競馬・地方競馬・海外競馬に対応)
 	public int GetRaceCard(int place, int raceNo, ST_RACECARD_DATA raceCard) {
 
 		ST_RACECARD_DATA_INTERNAL tempRaceCard = new ST_RACECARD_DATA_INTERNAL();
@@ -842,12 +972,9 @@ public class IpatHelper {
 		raceCard.entries = new ST_ENTRY_DETAIL[Math.max(tempRaceCard.entryCount, 0)];
 		// レース名はUTF-8のため専用ヘルパーで変換する(oddsTimeはascii)
 		raceCard.raceName = Utf8ToString(tempRaceCard.raceName);
-		// 発売締切時刻("HH:MM")と発売状態。開催メニュー(jg)由来で海外開催でも取得できる
+		// 発売締切時刻("HH:MM")と発売状態。海外開催でも取得できる
 		raceCard.deadline = ByteArrayToString(tempRaceCard.deadline);
 		raceCard.raceStatus = tempRaceCard.raceStatus;
-		// グレードはUTF-8(「J・GI」に多バイト文字を含む)。開催回数は「第30回」の 30
-		raceCard.grade = Utf8ToString(tempRaceCard.grade);
-		raceCard.raceNumber = tempRaceCard.raceNumber;
 
 		// 取得失敗・明細なしはここで解放して戻る
 		if ((returnValue & 1) != 1 || tempRaceCard.entryCount <= 0 || tempRaceCard.entryData == null) {
@@ -867,6 +994,70 @@ public class IpatHelper {
 		ST_RACECARD_DATA_INTERNAL.ByReference ref = new ST_RACECARD_DATA_INTERNAL.ByReference();
 		ref.useMemory(tempRaceCard.getPointer(), 0);
 		m_iPatHelperInvoker.ReleaseRaceCardData(ref);
+
+		return returnValue;
+	}
+
+	//WIN5をセレクト/ランダムで購入する(中央競馬のみ)
+	//買い目はサーバが生成してそのまま購入されるため、内容を事前に確認することはできない
+	public int BetWin5Auto(int mode, String axisUmaban, int betCount, int kingaku,
+			int year, int month, int day) {
+
+		return m_iPatHelperInvoker.BetWin5Auto((byte)mode, axisUmaban, (short)betCount,
+				kingaku, (short)year, (byte)month, (byte)day);
+	}
+
+	//ログコールバックの登録(nullで解除)
+	//解除の直後も実行中の呼び出しが短時間残る可能性があるため、
+	//コールバックの寿命は Logout 完了後まで保持すること
+	public void SetLogCallback(LogCallback callback, int minLevel) {
+
+		m_logCallback = callback;
+		m_iPatHelperInvoker.SetLogCallback(callback, minLevel);
+	}
+
+	//お知らせ取得
+	//ログイン済みのセッションが必要(中央優先、失敗時は地方へフォールバック)。
+	//お知らせが無い場合は message が空文字・itemCount が 0 で成功を返す。
+	public int GetNotice(ST_NOTICE_DATA notice) {
+
+		ST_NOTICE_DATA_INTERNAL tempNotice = new ST_NOTICE_DATA_INTERNAL();
+
+		int returnValue = m_iPatHelperInvoker.GetNotice(tempNotice);
+
+		notice.message = Utf8ToString(tempNotice.message);
+		notice.noticeNo = Utf8ToString(tempNotice.noticeNo);
+		notice.noticeType = Utf8ToString(tempNotice.noticeType);
+		notice.itemCount = tempNotice.itemCount;
+		notice.items = new ST_NOTICE_ITEM[Math.max(tempNotice.itemCount, 0)];
+
+		// 取得失敗・一覧なしはここで解放して戻る
+		if ((returnValue & ReturnValue.SUCCESS) != ReturnValue.SUCCESS
+				|| tempNotice.itemCount <= 0 || tempNotice.itemData == null) {
+			ST_NOTICE_DATA_INTERNAL.ByReference ref = new ST_NOTICE_DATA_INTERNAL.ByReference();
+			ref.useMemory(tempNotice.getPointer(), 0);
+			m_iPatHelperInvoker.ReleaseNoticeData(ref);
+			return returnValue;
+		}
+
+		// ポインターからお知らせ一覧を取得する
+		ST_NOTICE_ITEM_LIST_INTERNAL itemList = new ST_NOTICE_ITEM_LIST_INTERNAL(tempNotice.itemData, tempNotice.itemCount);
+		for (int i = 0; i < tempNotice.itemCount; i++) {
+			ST_NOTICE_ITEM_INTERNAL rawItem = itemList.itemList[i];
+
+			ST_NOTICE_ITEM item = new ST_NOTICE_ITEM();
+			item.title = Utf8ToString(rawItem.title);
+			item.date = Utf8ToString(rawItem.date);
+			item.url = Utf8ToString(rawItem.url);
+			item.icon = Utf8ToString(rawItem.icon);
+			item.color = Utf8ToString(rawItem.color);
+			notice.items[i] = item;
+		}
+
+		// 取得と同時にネイティブ側のメモリを解放する
+		ST_NOTICE_DATA_INTERNAL.ByReference ref = new ST_NOTICE_DATA_INTERNAL.ByReference();
+		ref.useMemory(tempNotice.getPointer(), 0);
+		m_iPatHelperInvoker.ReleaseNoticeData(ref);
 
 		return returnValue;
 	}

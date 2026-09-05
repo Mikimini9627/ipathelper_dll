@@ -29,17 +29,42 @@ public class Program {
 		//IpatHelperのインスタンスを取得する
 		IpatHelper iPatHelper = new IpatHelper();
 		
+		//DLL内部のログを受け取る(調査時は LOG_LEVEL_TRACE)
+		//入出金はサーバがエラーコードを返さないため、失敗の原因を知る唯一の手段になる
+		iPatHelper.SetLogCallback((level, message) -> {
+			String[] levelName = { "TRACE", "INFO", "WARN", "ERROR" };
+			//メッセージはUTF-8のnull終端文字列
+			System.out.println("[" + levelName[level] + "] " + message.getString(0, "UTF-8"));
+		}, IpatHelper.LogLevel.LOG_LEVEL_INFO);
+
 		//ログイン処理(各自自分のIDに変えてください)
 		returnValue = iPatHelper.Login("********", "********", "****", "****");
-		if((returnValue & 1) != 1) {
-			System.out.println("ログインに失敗しました。");
+		if((returnValue & IpatHelper.ReturnValue.SUCCESS) != IpatHelper.ReturnValue.SUCCESS) {
+			if((returnValue & IpatHelper.ReturnValue.FAILED_OUT_OF_SERVICE) != 0) {
+				//投票受付時間外またはメンテナンス中。即座に再試行しても必ず失敗する
+				System.out.println("ログインに失敗しました。(サービス時間外)");
+			} else {
+				System.out.println("ログインに失敗しました。");
+			}
 			return;
 		}
 
-		//オッズ取得(馬連・中央競馬/地方競馬に対応)。解放はラッパー内部で実施される
+		//お知らせ取得。解放はラッパー内部で実施される
+		IpatHelper.ST_NOTICE_DATA notice = new IpatHelper.ST_NOTICE_DATA();
+		returnValue = iPatHelper.GetNotice(notice);
+		if((returnValue & IpatHelper.ReturnValue.SUCCESS) == IpatHelper.ReturnValue.SUCCESS) {
+			if(!notice.message.isEmpty()) {
+				System.out.println("お知らせ: " + notice.message);
+			}
+			for (IpatHelper.ST_NOTICE_ITEM item : notice.items) {
+				System.out.println("  " + item.date + " " + item.title + " " + item.url);
+			}
+		}
+
+		//オッズ取得(馬連・中央競馬/地方競馬/海外競馬に対応)。解放はラッパー内部で実施される
 		IpatHelper.ST_ODDS_DATA oddsData = new IpatHelper.ST_ODDS_DATA();
 		returnValue = iPatHelper.GetOdds(IpatHelper.Kaisai.KAISAI_TOKYO, 11, IpatHelper.Shikibetsu.SHIKIBETSU_QUINELLA, oddsData);
-		if((returnValue & 1) == 1) {
+		if((returnValue & IpatHelper.ReturnValue.SUCCESS) == IpatHelper.ReturnValue.SUCCESS) {
 			System.out.println("オッズ更新時刻: " + oddsData.oddsTime + " / 明細数: " + oddsData.detailCount);
 			for (IpatHelper.ST_ODDS_DETAIL detail : oddsData.oddsDetail) {
 				String oddsText = (detail.status == 0) ? String.format("%.1f", detail.odds / 10.0) : ("status=" + detail.status);
@@ -47,13 +72,12 @@ public class Program {
 			}
 		}
 
-		//出馬表取得(中央競馬/地方競馬に対応)。解放はラッパー内部で実施される
+		//出馬表取得(中央競馬/地方競馬/海外競馬に対応)。解放はラッパー内部で実施される
 		IpatHelper.ST_RACECARD_DATA raceCard = new IpatHelper.ST_RACECARD_DATA();
 		returnValue = iPatHelper.GetRaceCard(IpatHelper.Kaisai.KAISAI_TOKYO, 11, raceCard);
-		if((returnValue & 1) == 1) {
+		if((returnValue & IpatHelper.ReturnValue.SUCCESS) == IpatHelper.ReturnValue.SUCCESS) {
 			System.out.println("レース名: " + raceCard.raceName);
 			System.out.println("締切: " + raceCard.deadline + " / 発売状態: " + raceCard.raceStatus);
-			System.out.println("グレード: " + raceCard.grade + " / 第" + raceCard.raceNumber + "回");
 			System.out.println("オッズ更新時刻: " + raceCard.oddsTime + " / 出走頭数: " + raceCard.entryCount);
 			for (IpatHelper.ST_ENTRY_DETAIL entry : raceCard.entries) {
 				String name = IpatHelper.Utf8ToString(entry.horseName);
@@ -69,7 +93,7 @@ public class Program {
 		IpatHelper.ST_BET_DATA betData = new IpatHelper.ST_BET_DATA();
 		returnValue = iPatHelper.GetBetInstance(IpatHelper.Kaisai.KAISAI_TOKYO, 11, 2021, 3, 14, IpatHelper.Houshiki.HOUSHIKI_NORMAL, 
 				IpatHelper.Shikibetsu.SHIKIBETSU_TRIO, 100, "1-2-3", betData);
-		if((returnValue & 1) != 1) {
+		if((returnValue & IpatHelper.ReturnValue.SUCCESS) != IpatHelper.ReturnValue.SUCCESS) {
 			System.out.println("買い目取得に失敗しました。");
 			iPatHelper.Logout();
 			return;
@@ -78,7 +102,7 @@ public class Program {
 		//購入
 		IpatHelper.ST_BET_DATA[] betDataList = new IpatHelper.ST_BET_DATA[] {betData};
 		returnValue = iPatHelper.Bet(betDataList, betDataList.length, 1000);
-		if((returnValue & 1) != 1) {
+		if((returnValue & IpatHelper.ReturnValue.SUCCESS) != IpatHelper.ReturnValue.SUCCESS) {
 			System.out.println("購入に失敗しました。");
 			iPatHelper.Logout();
 			return;
@@ -87,7 +111,7 @@ public class Program {
 		//買い目取得(Win5)
 		IpatHelper.ST_BET_DATA_WIN5 betDataWin5 = new IpatHelper.ST_BET_DATA_WIN5();
 		returnValue = iPatHelper.GetBetInstanceWin5(100, 2021, 3, 14, "1-2-3-4-5", betDataWin5);
-		if((returnValue & 1) != 1) {
+		if((returnValue & IpatHelper.ReturnValue.SUCCESS) != IpatHelper.ReturnValue.SUCCESS) {
 			System.out.println("買い目取得(Win5)に失敗しました。");
 			iPatHelper.Logout();
 			return;
@@ -95,7 +119,7 @@ public class Program {
 		
 		//購入(Win5)
 		returnValue = iPatHelper.BetWin5(betDataWin5, 1000);
-		if((returnValue & 1) != 1) {
+		if((returnValue & IpatHelper.ReturnValue.SUCCESS) != IpatHelper.ReturnValue.SUCCESS) {
 			System.out.println("購入(Win5)に失敗しました。");
 			iPatHelper.Logout();
 			return;
@@ -103,5 +127,8 @@ public class Program {
 
 		//ログアウト処理
 		iPatHelper.Logout();
+
+		//コールバックを解除する(DLLを明示的にアンロードする場合は必須)
+		iPatHelper.SetLogCallback(null, IpatHelper.LogLevel.LOG_LEVEL_INFO);
 	}
 }

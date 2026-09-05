@@ -20,26 +20,38 @@ def main():
 
         # ログイン処理(各自自分のIDに変えてください)
         returnValue = login('********', '********', '****', '****')
-        if (returnValue & 1) != 1:
-            print("ログインに失敗しました。")
+        if (returnValue & SUCCESS) != SUCCESS:
+            if (returnValue & FAILED_OUT_OF_SERVICE) != 0:
+                # 投票受付時間外またはメンテナンス中。即座に再試行しても必ず失敗する
+                print("ログインに失敗しました。(サービス時間外)")
+            else:
+                print("ログインに失敗しました。")
             return
 
-        # オッズ取得(馬連・中央競馬/地方競馬に対応)。解放はラッパー内部で実施される
+        # お知らせ取得。解放はラッパー内部で実施される
+        notice = ST_NOTICE_DATA()
+        returnValue = get_notice(notice)
+        if (returnValue & SUCCESS) == SUCCESS:
+            if notice.Message != "":
+                print("お知らせ: " + notice.Message)
+            for item in notice.ItemData:
+                print("  " + item.Date + " " + item.Title + " " + item.Url)
+
+        # オッズ取得(馬連・中央競馬/地方競馬/海外競馬に対応)。解放はラッパー内部で実施される
         oddsData = ST_ODDS_DATA()
         returnValue = get_odds(KAISAI_TOKYO, 11, SHIKIBETSU_QUINELLA, oddsData)
-        if (returnValue & 1) == 1:
+        if (returnValue & SUCCESS) == SUCCESS:
             print("オッズ更新時刻: " + oddsData.OddsTime + " / 明細数: " + str(oddsData.DetailCount))
             for detail in oddsData.OddsDetail:
                 oddsText = "{:.1f}".format(detail.Odds / 10.0) if detail.Status == 0 else ("status=" + str(detail.Status))
                 print("  " + str(detail.Horse1) + "-" + str(detail.Horse2) + " : " + oddsText)
 
-        # 出馬表取得(中央競馬/地方競馬に対応)。解放はラッパー内部で実施される
+        # 出馬表取得(中央競馬/地方競馬/海外競馬に対応)。解放はラッパー内部で実施される
         raceCard = ST_RACECARD_DATA()
         returnValue = get_race_card(KAISAI_TOKYO, 11, raceCard)
-        if (returnValue & 1) == 1:
+        if (returnValue & SUCCESS) == SUCCESS:
             print("レース名: " + raceCard.RaceName)
             print("締切: " + raceCard.Deadline + " / 発売状態: " + str(raceCard.RaceStatus))
-            print("グレード: " + raceCard.Grade + " / 第" + str(raceCard.RaceNumber) + "回")
             print("オッズ更新時刻: " + raceCard.OddsTime + " / 出走頭数: " + str(raceCard.EntryCount))
             for entry in raceCard.EntryData:
                 name = entry.HorseName.decode('utf-8')
@@ -53,28 +65,29 @@ def main():
         betData = ST_BET_DATA()
         returnValue = get_bet_instance(KAISAI_NAKAYAMA, 11, 2020, 12, 27,
                         HOUSHIKI_FORMATION, SHIKIBETSU_TRIO, 100, "1,9-2,3,13-7,3,8,10", betData)
-        if (returnValue & 1) != 1:
+        if (returnValue & SUCCESS) != SUCCESS:
             print("馬券購入情報の取得に失敗しました。")
             return
 
         # 馬券購入処理実行
         betDataList = (ST_BET_DATA * 1)()
         betDataList[0] = betData
-        returnValue = bet(betDataList, 1, 0)
-        if (returnValue & 1) != 1:
+        # 第3引数は分割送信の「間隔」(ms)。省略時は DEFAULT_WAIT_TIME
+        returnValue = bet(betDataList, 1)
+        if (returnValue & SUCCESS) != SUCCESS:
             print("馬券購入に失敗しました。")
             return
 
         # 馬券購入用のインスタンス取得(WIN5)
         betDataWin5 = ST_BET_DATA_WIN5()
         returnValue = get_bet_instance_win5(100, 2020, 12, 27, "1,14-9,13-12-2-1,1,3,5", betDataWin5)
-        if (returnValue & 1) != 1:
+        if (returnValue & SUCCESS) != SUCCESS:
             print("馬券購入情報(WIN5)の取得に失敗しました。")
             return
 
         # 馬券購入処理実行(WIN5)
-        returnValue = bet_win5(betDataWin5, 0)
-        if (returnValue & 1) != 1:
+        returnValue = bet_win5(betDataWin5)
+        if (returnValue & SUCCESS) != SUCCESS:
             print("馬券購入(WIN5)に失敗しました。")
             return
     
