@@ -191,15 +191,11 @@ namespace IpatHelper_DotNetSampleApl
             public IntPtr pobjEntry;
             [MarshalAs(UnmanagedType.ByValArray, SizeConst = 128)]
             public byte[] szRaceName;
-            // ネイティブ側の ST_RACECARD_DATA へ後から追加されたフィールド。
             // この構造体はネイティブ側が直接書き込む領域のため、
-            // 順序・型が DLL 側と一致していないとメモリ破壊になる。
+            // 順序・型が DLL 側の ST_RACECARD_DATA と一致していないとメモリ破壊になる。
             [MarshalAs(UnmanagedType.ByValArray, SizeConst = 8)]
             public byte[] szDeadline;
             public byte ucRaceStatus;
-            [MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)]
-            public byte[] szGrade;
-            public ushort usRaceNumber;
         }
 
         public struct ST_RACECARD_DATA
@@ -212,8 +208,55 @@ namespace IpatHelper_DotNetSampleApl
             public string raceName;
             public string deadline;         // 発売締切時刻 "HH:MM"(取得不可時は空文字)
             public RACE_STATUS raceStatus;  // 発売状態
-            public string grade;            // グレード "GI"/"J・GI"/"L" 等(重賞でなければ空文字)
-            public ushort raceNumber;       // 開催回数(「第30回」の 30)
+        };
+
+        // お知らせ一覧の1件
+        [StructLayout(LayoutKind.Sequential)]
+        private struct ST_NOTICE_ITEM_INTERNAL
+        {
+            [MarshalAs(UnmanagedType.ByValArray, SizeConst = 512)]
+            public byte[] szTitle;
+            [MarshalAs(UnmanagedType.ByValArray, SizeConst = 64)]
+            public byte[] szDate;
+            [MarshalAs(UnmanagedType.ByValArray, SizeConst = 1024)]
+            public byte[] szUrl;
+            [MarshalAs(UnmanagedType.ByValArray, SizeConst = 128)]
+            public byte[] szIcon;
+            [MarshalAs(UnmanagedType.ByValArray, SizeConst = 32)]
+            public byte[] szColor;
+        }
+
+        public struct ST_NOTICE_ITEM
+        {
+            public string title;    // タイトル
+            public string date;     // 日付テキスト
+            public string url;      // リンクURL
+            public string icon;     // アイコンファイル名
+            public string color;    // 日付表示色
+        };
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct ST_NOTICE_DATA_INTERNAL
+        {
+            // この構造体はネイティブ側が直接書き込む領域のため、
+            // 順序・型が DLL 側の ST_NOTICE_DATA と一致していないとメモリ破壊になる。
+            [MarshalAs(UnmanagedType.ByValArray, SizeConst = 2048)]
+            public byte[] szMessage;
+            [MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)]
+            public byte[] szNoticeNo;
+            [MarshalAs(UnmanagedType.ByValArray, SizeConst = 8)]
+            public byte[] szNoticeType;
+            public uint unItemCount;
+            public IntPtr pobjItem;
+        }
+
+        public struct ST_NOTICE_DATA
+        {
+            public string message;          // 強制表示お知らせ本文(無い場合は空文字)
+            public string noticeNo;         // お知らせ番号
+            public string noticeType;       // お知らせ種別
+            public uint itemCount;          // お知らせ一覧の件数
+            public ST_NOTICE_ITEM[] items;  // お知らせ一覧
         };
         #endregion
 
@@ -287,7 +330,7 @@ namespace IpatHelper_DotNetSampleApl
         }
 
         /// <summary>
-        /// レースの発売状態(ST_RACECARD_DATA.raceStatus)。開催メニューの jg 由来。
+        /// レースの発売状態(ST_RACECARD_DATA.raceStatus)。
         /// UNKNOWN が 0 でないのは、0 が「発売中」でありゼロ初期化と区別する必要があるため。
         /// </summary>
         public enum RACE_STATUS : byte
@@ -307,6 +350,9 @@ namespace IpatHelper_DotNetSampleApl
             FAILED_CHIHOU = 8,
             FAILED_COMMUNICATE_CHUOU = 16,
             FAILED_COMMUNICATE_CHIHOU = 32,
+            // サービス時間外(FAILED_CHUOU / FAILED_CHIHOU と併せて立つ)。
+            // 投票受付時間外が最も多い原因で、即座に再試行しても必ず失敗する。
+            FAILED_OUT_OF_SERVICE = 64,
         }
 
         public enum WEEK_DAY
@@ -373,7 +419,7 @@ namespace IpatHelper_DotNetSampleApl
 
         /// <summary>
         /// <para>DLL 内部のログを受け取るハンドラを登録する。null で解除。</para>
-        /// <para>入出金は erc/erm のようなエラーコードを返さないため、失敗の原因を知るには
+        /// <para>入出金はサーバがエラーコードを返さないため、失敗の原因を知るには
         /// このログが唯一の手掛かりになる。失敗した段階・画面ID・タイトルは
         /// <see cref="LogLevel.Error"/> で通知されるが、サーバ側の拒否理由が載る
         /// 応答本文の抜粋は <see cref="LogLevel.Trace"/> を指定したときのみ通知される。</para>
@@ -492,6 +538,12 @@ namespace IpatHelper_DotNetSampleApl
 
             [DllImport("IpatHelper.dll", CallingConvention = CallingConvention.Cdecl)]
             internal static extern void ReleaseRaceCardData(ref ST_RACECARD_DATA_INTERNAL objRaceCardData);
+
+            [DllImport("IpatHelper.dll", CallingConvention = CallingConvention.Cdecl)]
+            internal static extern uint GetNotice(ref ST_NOTICE_DATA_INTERNAL objNoticeData);
+
+            [DllImport("IpatHelper.dll", CallingConvention = CallingConvention.Cdecl)]
+            internal static extern void ReleaseNoticeData(ref ST_NOTICE_DATA_INTERNAL objNoticeData);
         }
         #endregion
 
@@ -770,7 +822,7 @@ namespace IpatHelper_DotNetSampleApl
         }
 
         /// <summary>
-        /// オッズ取得処理実行(中央競馬・地方競馬に対応)
+        /// オッズ取得処理実行(中央競馬・地方競馬・海外競馬に対応)
         /// </summary>
         /// <param name="place">開催場</param>
         /// <param name="raceNo">レース番号</param>
@@ -824,7 +876,7 @@ namespace IpatHelper_DotNetSampleApl
         }
 
         /// <summary>
-        /// 出馬表取得処理実行(中央競馬・地方競馬に対応)
+        /// 出馬表取得処理実行(中央競馬・地方競馬・海外競馬に対応)
         /// </summary>
         /// <param name="place">開催場</param>
         /// <param name="raceNo">レース番号</param>
@@ -841,9 +893,7 @@ namespace IpatHelper_DotNetSampleApl
                 pobjEntry = IntPtr.Zero,
                 szRaceName = new byte[128],
                 szDeadline = new byte[8],
-                ucRaceStatus = (byte)RACE_STATUS.UNKNOWN,
-                szGrade = new byte[16],
-                usRaceNumber = 0
+                ucRaceStatus = (byte)RACE_STATUS.UNKNOWN
             };
 
             uint returnValue = NativeMethods.GetRaceCard((ushort)place, raceNo, ref tempRaceCardData);
@@ -857,9 +907,7 @@ namespace IpatHelper_DotNetSampleApl
                 entries = Array.Empty<ST_ENTRY_DETAIL>(),
                 raceName = DecodeUtf8(tempRaceCardData.szRaceName),
                 deadline = DecodeUtf8(tempRaceCardData.szDeadline),
-                raceStatus = (RACE_STATUS)tempRaceCardData.ucRaceStatus,
-                grade = DecodeUtf8(tempRaceCardData.szGrade),
-                raceNumber = tempRaceCardData.usRaceNumber
+                raceStatus = (RACE_STATUS)tempRaceCardData.ucRaceStatus
             };
 
             // 取得失敗、または明細が無い場合はここで解放して戻る
@@ -902,6 +950,66 @@ namespace IpatHelper_DotNetSampleApl
             }
 
             NativeMethods.ReleaseRaceCardData(ref tempRaceCardData);
+
+            return returnValue;
+        }
+
+        /// <summary>
+        /// お知らせ取得処理実行
+        /// ログイン済みのセッションが必要(中央優先、失敗時は地方へフォールバック)。
+        /// お知らせが無い場合は message が空文字・itemCount が 0 で成功を返す。
+        /// </summary>
+        /// <param name="notice">取得したお知らせ情報</param>
+        /// <returns></returns>
+        public static uint GetNotice(out ST_NOTICE_DATA notice)
+        {
+            ST_NOTICE_DATA_INTERNAL tempNoticeData = new()
+            {
+                szMessage = new byte[2048],
+                szNoticeNo = new byte[16],
+                szNoticeType = new byte[8],
+                unItemCount = 0,
+                pobjItem = IntPtr.Zero
+            };
+
+            uint returnValue = NativeMethods.GetNotice(ref tempNoticeData);
+
+            notice = new ST_NOTICE_DATA()
+            {
+                message = DecodeUtf8(tempNoticeData.szMessage),
+                noticeNo = DecodeUtf8(tempNoticeData.szNoticeNo),
+                noticeType = DecodeUtf8(tempNoticeData.szNoticeType),
+                itemCount = tempNoticeData.unItemCount,
+                items = Array.Empty<ST_NOTICE_ITEM>()
+            };
+
+            // 取得失敗、または一覧が無い場合はここで解放して戻る
+            if ((returnValue & (uint)RETURN_VALUE.SUCCESS) == 0 || tempNoticeData.unItemCount <= 0 || tempNoticeData.pobjItem == IntPtr.Zero)
+            {
+                NativeMethods.ReleaseNoticeData(ref tempNoticeData);
+                return returnValue;
+            }
+
+            // ネイティブ側で確保された一覧配列をマネージド配列へ複製する
+            notice.items = new ST_NOTICE_ITEM[tempNoticeData.unItemCount];
+            int itemSize = Marshal.SizeOf(typeof(ST_NOTICE_ITEM_INTERNAL));
+            for (int i = 0; i < tempNoticeData.unItemCount; i++)
+            {
+                IntPtr elementPtr = IntPtr.Add(tempNoticeData.pobjItem, i * itemSize);
+                ST_NOTICE_ITEM_INTERNAL item = Marshal.PtrToStructure<ST_NOTICE_ITEM_INTERNAL>(elementPtr);
+
+                notice.items[i] = new ST_NOTICE_ITEM()
+                {
+                    title = DecodeUtf8(item.szTitle),
+                    date = DecodeUtf8(item.szDate),
+                    url = DecodeUtf8(item.szUrl),
+                    icon = DecodeUtf8(item.szIcon),
+                    color = DecodeUtf8(item.szColor)
+                };
+            }
+
+            // データの複製が終わったら、取得と同時にネイティブ側のメモリを解放する
+            NativeMethods.ReleaseNoticeData(ref tempNoticeData);
 
             return returnValue;
         }

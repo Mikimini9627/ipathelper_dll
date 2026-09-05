@@ -63,7 +63,7 @@ ODDS_STATUS_NORMAL = 0
 ODDS_STATUS_CANCEL = 1
 ODDS_STATUS_UNACQUIRED = 2
 
-# ST_RACECARD_DATA.RaceStatus の値(開催メニュー jg 由来)
+# ST_RACECARD_DATA.RaceStatus の値
 # UNKNOWN が 0 でないのは、0 が「発売中」でありゼロ初期化と区別する必要があるため。
 RACE_STATUS_ON_SALE = 0         # 発売中
 RACE_STATUS_CLOSED = 1          # 発売終了
@@ -104,6 +104,9 @@ FAILED_CHUOU = 4
 FAILED_CHIHOU = 8
 FAILED_COMMUNICATE_CHUOU = 16
 FAILED_COMMUNICATE_CHIHOU = 32
+# サービス時間外(FAILED_CHUOU / FAILED_CHIHOU と併せて立つ)。
+# 投票受付時間外が最も多い原因で、即座に再試行しても必ず失敗する。
+FAILED_OUT_OF_SERVICE = 64
 
 DEFAULT_RETRY_COUNT = 10
 DEFAULT_WAIT_TIME = 1000
@@ -164,8 +167,22 @@ class ST_RACECARD_DATA:
         self.RaceName = ""
         self.Deadline = ""                       # 発売締切時刻 "HH:MM"(取得不可時は空文字)
         self.RaceStatus = RACE_STATUS_UNKNOWN    # 発売状態(RACE_STATUS_*)
-        self.Grade = ""                          # グレード "GI"/"J・GI"/"L" 等(重賞でなければ空文字)
-        self.RaceNumber = 0                      # 開催回数(「第30回」の 30)
+
+class ST_NOTICE_ITEM:
+    def __init__(self):
+        self.Title = ""     # タイトル
+        self.Date = ""      # 日付テキスト
+        self.Url = ""       # リンクURL
+        self.Icon = ""      # アイコンファイル名
+        self.Color = ""     # 日付表示色
+
+class ST_NOTICE_DATA:
+    def __init__(self):
+        self.Message = ""   # 強制表示お知らせ本文(無い場合は空文字)
+        self.NoticeNo = ""  # お知らせ番号
+        self.NoticeType = ""# お知らせ種別
+        self.ItemCount = 0  # お知らせ一覧の件数
+        self.ItemData = []  # お知らせ一覧(ST_NOTICE_ITEM のリスト)
 
 #構造体マーシャリング用クラス
 class ST_TICKET_DATA_DETAIL(Structure):
@@ -209,14 +226,21 @@ class ST_ENTRY_DETAIL(Structure):
         ("PlaceOddsStatus", c_byte), ("PlaceOddsLow", c_uint), ("PlaceOddsHigh", c_uint)]
 
 class ST_RACECARD_DATA_INTERNAL(Structure):
-    # RaceName(レース名, UTF-8のbytes)はネイティブ側構造体の末尾に追加されている
-    # Deadline(発売締切時刻)/RaceStatus(発売状態)/Grade(グレード)/RaceNumber(開催回数) も
-    # 同様に末尾へ追加されている。
-    # ネイティブ側が直接書き込む領域のため、順序・型が DLL 側と一致していないとメモリ破壊になる。
+    # ネイティブ側が直接書き込む領域のため、順序・型が DLL 側の ST_RACECARD_DATA と
+    # 一致していないとメモリ破壊になる。
     _fields_ = [("Place", c_ushort), ("RaceNo", c_byte), ("OddsTime", c_char * 8), \
         ("EntryCount", c_uint), ("EntryData", c_void_p), ("RaceName", c_char * 128), \
-        ("Deadline", c_char * 8), ("RaceStatus", c_ubyte), \
-        ("Grade", c_char * 16), ("RaceNumber", c_ushort)]
+        ("Deadline", c_char * 8), ("RaceStatus", c_ubyte)]
+
+class ST_NOTICE_ITEM_INTERNAL(Structure):
+    _fields_ = [("Title", c_char * 512), ("Date", c_char * 64), ("Url", c_char * 1024), \
+        ("Icon", c_char * 128), ("Color", c_char * 32)]
+
+class ST_NOTICE_DATA_INTERNAL(Structure):
+    # ネイティブ側が直接書き込む領域のため、順序・型が DLL 側の ST_NOTICE_DATA と
+    # 一致していないとメモリ破壊になる。
+    _fields_ = [("Message", c_char * 2048), ("NoticeNo", c_char * 16), \
+        ("NoticeType", c_char * 8), ("ItemCount", c_uint), ("ItemData", c_void_p)]
 
 def init():
     '''
@@ -262,7 +286,7 @@ def init():
     lib.ReleasePurchaseData.argtypes = [POINTER(ST_PURCHASE_DATA_INTERNAL)]
 
     lib.GetBetInstance.restype = c_uint
-    lib.GetBetInstance.argtypes = [c_byte, c_byte, c_ushort, c_byte, c_byte, c_byte, c_byte, c_uint, c_char_p, c_void_p]
+    lib.GetBetInstance.argtypes = [c_ushort, c_byte, c_ushort, c_byte, c_byte, c_byte, c_byte, c_uint, c_char_p, c_void_p]
 
     lib.Bet.restype = c_uint
     lib.Bet.argtypes = [c_void_p, c_ushort, c_ushort]
@@ -277,7 +301,7 @@ def init():
     lib.BetWin5Auto.argtypes = [c_byte, c_char_p, c_ushort, c_uint, c_ushort, c_byte, c_byte]
 
     lib.SetAutoDepositFlag.restype = c_uint
-    lib.SetAutoDepositFlag.argtypes = [c_bool, c_ushort, c_ushort]
+    lib.SetAutoDepositFlag.argtypes = [c_bool, c_uint, c_ushort]
 
     lib.GetOdds.restype = c_uint
     lib.GetOdds.argtypes = [c_ushort, c_byte, c_byte, c_void_p]
@@ -290,6 +314,12 @@ def init():
 
     lib.ReleaseRaceCardData.restype = None
     lib.ReleaseRaceCardData.argtypes = [POINTER(ST_RACECARD_DATA_INTERNAL)]
+
+    lib.GetNotice.restype = c_uint
+    lib.GetNotice.argtypes = [c_void_p]
+
+    lib.ReleaseNoticeData.restype = None
+    lib.ReleaseNoticeData.argtypes = [POINTER(ST_NOTICE_DATA_INTERNAL)]
 
     if maxsize > 2 ** 32:
         windll.kernel32.FreeLibrary.argtypes = [wintypes.HMODULE]
@@ -311,7 +341,7 @@ def set_log_callback(handler, minLevel : int = LOG_LEVEL_INFO) -> None:
         DLL内部のログを受け取るハンドラを登録する(Noneで解除)
 
         handler は handler(level: int, message: str) の形で呼ばれる。
-        入出金は erc/erm のようなエラーコードを返さないため、失敗の原因を知るには
+        入出金はサーバがエラーコードを返さないため、失敗の原因を知るには
         このログが唯一の手掛かりになる。失敗した段階・画面ID・タイトルは
         LOG_LEVEL_ERROR で通知されるが、サーバ側の拒否理由が載る応答本文の抜粋は
         LOG_LEVEL_TRACE を指定したときのみ通知される(口座番号や残高を含み得る)。
@@ -524,7 +554,7 @@ def set_auto_deposit_flag(enable : bool, depositValue : int, confirmTimeout : in
 
 def get_odds(place : int, raceNo : int, shikibetsu : int, oddsData : ST_ODDS_DATA) -> int:
     '''
-        オッズ取得処理実行(中央競馬・地方競馬に対応)
+        オッズ取得処理実行(中央競馬・地方競馬・海外競馬に対応)
         単勝・複勝は基本オッズ、枠連〜三連単は全通りのオッズ表を取得する。
         ネイティブ側で確保されたメモリは本関数内で解放する。
     '''
@@ -567,7 +597,7 @@ def get_odds(place : int, raceNo : int, shikibetsu : int, oddsData : ST_ODDS_DAT
 
 def get_race_card(place : int, raceNo : int, raceCard : ST_RACECARD_DATA) -> int:
     '''
-        出馬表取得処理実行(中央競馬・地方競馬に対応)
+        出馬表取得処理実行(中央競馬・地方競馬・海外競馬に対応)
         各出走馬の枠番・馬番・馬名・性齢・馬体重・騎手・斤量・調教師・
         単勝人気・単勝/複勝オッズを取得する。
         ネイティブ側で確保されたメモリは本関数内で解放する。
@@ -590,12 +620,9 @@ def get_race_card(place : int, raceNo : int, raceCard : ST_RACECARD_DATA) -> int
     raceCard.EntryCount = tempRaceCardData.EntryCount
     # レース名はUTF-8のbytesのためutf-8でデコードする
     raceCard.RaceName = tempRaceCardData.RaceName.decode('utf-8', errors='ignore')
-    # 発売締切時刻("HH:MM")と発売状態。開催メニュー(jg)由来で、海外開催でも取得できる
+    # 発売締切時刻("HH:MM")と発売状態。海外開催でも取得できる
     raceCard.Deadline = tempRaceCardData.Deadline.decode('ascii', errors='ignore')
     raceCard.RaceStatus = tempRaceCardData.RaceStatus
-    # グレードはUTF-8のbytes(「J・GI」に多バイト文字を含む)
-    raceCard.Grade = tempRaceCardData.Grade.decode("utf-8", errors="ignore")
-    raceCard.RaceNumber = tempRaceCardData.RaceNumber
 
     # 取得失敗・明細なしはここで解放して戻る
     if (returnValue & 1) != 1 or tempRaceCardData.EntryCount <= 0 or not tempRaceCardData.EntryData:
@@ -616,5 +643,56 @@ def get_race_card(place : int, raceNo : int, raceCard : ST_RACECARD_DATA) -> int
         raceCard.EntryData.append(ST_ENTRY_DETAIL.from_buffer(oneEntryBytes, 0))
 
     lib.ReleaseRaceCardData(byref(tempRaceCardData))
+
+    return returnValue
+
+def get_notice(notice : ST_NOTICE_DATA) -> int:
+    '''
+        お知らせ取得処理実行
+        ログイン済みのセッションが必要(中央優先、失敗時は地方へフォールバック)。
+        お知らせが無い場合は Message が空文字・ItemCount が 0 で成功を返す。
+        ネイティブ側で確保されたメモリは本関数内で解放する。
+    '''
+
+    global lib
+
+    # 内部的な構造体のインスタンスを生成する
+    tempNoticeData = ST_NOTICE_DATA_INTERNAL()
+
+    # お知らせを取得する
+    returnValue = lib.GetNotice(byref(tempNoticeData))
+
+    # 返却用のデータに値を設定(文字列はUTF-8のbytes)
+    notice.Message = tempNoticeData.Message.decode('utf-8', errors='ignore')
+    notice.NoticeNo = tempNoticeData.NoticeNo.decode('utf-8', errors='ignore')
+    notice.NoticeType = tempNoticeData.NoticeType.decode('utf-8', errors='ignore')
+    notice.ItemCount = tempNoticeData.ItemCount
+
+    # 取得失敗・一覧なしはここで解放して戻る
+    if (returnValue & SUCCESS) != SUCCESS or tempNoticeData.ItemCount <= 0 or not tempNoticeData.ItemData:
+        lib.ReleaseNoticeData(byref(tempNoticeData))
+        return returnValue
+
+    # お知らせ一覧(全て)を格納するためのバッファを確保(解放前に取り出す)
+    allItemBytes = bytearray(string_at(tempNoticeData.ItemData, \
+        sizeof(ST_NOTICE_ITEM_INTERNAL) * tempNoticeData.ItemCount))
+
+    for i in range(tempNoticeData.ItemCount):
+        # 1つ分の構造体データを格納するバッファを確保して情報を格納する
+        oneItemBytes = bytearray(sizeof(ST_NOTICE_ITEM_INTERNAL))
+        for j in range(sizeof(ST_NOTICE_ITEM_INTERNAL)):
+            oneItemBytes[j] = allItemBytes[j + i * sizeof(ST_NOTICE_ITEM_INTERNAL)]
+
+        rawItem = ST_NOTICE_ITEM_INTERNAL.from_buffer(oneItemBytes, 0)
+
+        item = ST_NOTICE_ITEM()
+        item.Title = rawItem.Title.decode('utf-8', errors='ignore')
+        item.Date = rawItem.Date.decode('utf-8', errors='ignore')
+        item.Url = rawItem.Url.decode('utf-8', errors='ignore')
+        item.Icon = rawItem.Icon.decode('utf-8', errors='ignore')
+        item.Color = rawItem.Color.decode('utf-8', errors='ignore')
+        notice.ItemData.append(item)
+
+    lib.ReleaseNoticeData(byref(tempNoticeData))
 
     return returnValue
