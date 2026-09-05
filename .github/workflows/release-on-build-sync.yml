@@ -1,0 +1,118 @@
+name: Release on build sync
+
+# builds/ 配下の DLL が更新されたら、DLL のファイルバージョンからタグを打って
+# GitHub Release を自動作成する。同じバージョンのタグが既にある場合は何もしない。
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'builds/x64/IpatHelper.dll'
+      - 'builds/x86/IpatHelper.dll'
+      - 'builds/x64/IpatHelper.lib'
+      - 'builds/x86/IpatHelper.lib'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-on-build-sync
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read DLL version
+        id: ver
+        shell: pwsh
+        run: |
+          $x64 = 'builds/x64/IpatHelper.dll'
+          $x86 = 'builds/x86/IpatHelper.dll'
+          foreach ($f in @($x64, $x86)) {
+            if (-not (Test-Path $f)) { throw "not found: $f" }
+          }
+          $v64 = (Get-Item $x64).VersionInfo.FileVersion.Trim()
+          $v86 = (Get-Item $x86).VersionInfo.FileVersion.Trim()
+          Write-Host "x64=$v64 x86=$v86"
+          if ($v64 -ne $v86) { throw "version mismatch: x64=$v64 x86=$v86" }
+          "version=$v64" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "tag=v$v64"    | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+      - name: Check existing release
+        id: check
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = '${{ steps.ver.outputs.tag }}'
+          gh release view $tag --json tagName 2>$null | Out-Null
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "release $tag already exists - skipping"
+            "skip=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          } else {
+            "skip=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          }
+          # gh の非ゼロ終了でステップを失敗させない
+          $global:LASTEXITCODE = 0
+
+      - name: Package artifacts
+        if: steps.check.outputs.skip == 'false'
+        shell: pwsh
+        run: |
+          $ver = '${{ steps.ver.outputs.version }}'
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          foreach ($arch in @('x64','x86')) {
+            $stage = "dist/stage-$arch"
+            New-Item -ItemType Directory -Force -Path $stage | Out-Null
+            Copy-Item "builds/$arch/IpatHelper.dll" $stage
+            Copy-Item "builds/$arch/IpatHelper.lib" $stage
+            Compress-Archive -Path "$stage/*" -DestinationPath "dist/IpatHelper-$ver-$arch.zip" -Force
+          }
+          Get-ChildItem dist -Filter *.zip | Format-Table Name, Length
+
+      - name: Write release notes
+        if: steps.check.outputs.skip == 'false'
+        shell: pwsh
+        run: |
+          $ver = '${{ steps.ver.outputs.version }}'
+          $repo = '${{ github.repository }}'
+          $lines = @(
+            "IpatHelper.dll $ver のビルド済みバイナリです。"
+            ''
+            '## 収録内容'
+            ''
+            '| ファイル | 内容 |'
+            '| --- | --- |'
+            ('| `IpatHelper-{0}-x64.zip` | 64bit 版 `IpatHelper.dll` / `IpatHelper.lib` |' -f $ver)
+            ('| `IpatHelper-{0}-x86.zip` | 32bit 版 `IpatHelper.dll` / `IpatHelper.lib` |' -f $ver)
+            ''
+            "- ファイルバージョン: $ver"
+            ('- 公開 API の詳細は [関数仕様書](https://github.com/{0}/blob/master/builds/%E9%96%A2%E6%95%B0%E4%BB%95%E6%A7%98%E6%9B%B8.md) を参照してください。' -f $repo)
+            ('- 使用例は [`sample_app`](https://github.com/{0}/tree/master/sample_app) / [`dll_test_app`](https://github.com/{0}/tree/master/dll_test_app) にあります。' -f $repo)
+            ''
+            'ライセンスは MIT です。'
+          )
+          Set-Content -Path dist/notes.md -Value $lines -Encoding utf8
+
+      - name: Create release
+        if: steps.check.outputs.skip == 'false'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ver = '${{ steps.ver.outputs.version }}'
+          $tag = '${{ steps.ver.outputs.tag }}'
+          gh release create $tag `
+            "dist/IpatHelper-$ver-x64.zip" `
+            "dist/IpatHelper-$ver-x86.zip" `
+            --target ${{ github.sha }} `
+            --title "IpatHelper $ver" `
+            --notes-file dist/notes.md
