@@ -553,7 +553,9 @@ extern	"C" {
 		unsigned char ucDecisionFlag;
 
 		/// <summary>
-		/// 購入フラグ
+		/// <para>購入フラグ (BET_FLAG の値)。</para>
+		/// <para>その明細が属する受付の券種で、通常 / WIN5 / 海外のいずれかです。
+		/// 中央の購入履歴には海外の馬券も並ぶため、区別にはこの値を使います。</para>
 		/// </summary>
 		unsigned char ucBetFlag;
 
