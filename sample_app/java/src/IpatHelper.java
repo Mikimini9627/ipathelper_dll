@@ -89,6 +89,7 @@ public class IpatHelper {
 		public static final int KAISAI_CHURCHILLDOWNS = 28;
 		public static final int KAISAI_ABDULAZIZ = 29;
 		public static final int KAISAI_ASCOT = 30;
+		public static final int KAISAI_BELMONTPARK = 31;
 	}
 
 	//方式

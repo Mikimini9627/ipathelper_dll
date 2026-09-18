@@ -293,7 +293,8 @@ namespace IpatHelper_DotNetSampleApl
             DEAUVILE,
             CHURCHILLDOWNS,
             ABDULAZIZ,
-            ASCOT
+            ASCOT,
+            BELMONTPARK
         }
 
         public enum Houshiki
