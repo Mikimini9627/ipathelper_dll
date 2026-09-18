@@ -370,7 +370,12 @@ extern	"C" {
 		/// <summary>
 		/// アスコット
 		/// </summary>
-		ASCOT
+		ASCOT,
+
+		/// <summary>
+		/// ベルモントパーク（アメリカ）
+		/// </summary>
+		BELMONTPARK
 	};
 
 	/// <summary>
